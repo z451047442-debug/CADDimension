@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -18,21 +18,26 @@
     <ProjectName>CADDimension</ProjectName>
     <ProjectGuid>{75e6d57f-3cde-4066-a3cf-8b2280699325}</ProjectGuid>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <MaxSDK>D:\3dsMaxSDK2027\maxsdk\</MaxSDK>
+    <MaxSDK Condition="'$(MaxSDK)' == ''">$(MAXSDK_DIR)</MaxSDK>
     <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <Import Project="$(MaxSDK)\ProjectSettings\PropertySheets\3dsmax.general.project.settings.props" />
+  <Import Project="$(MaxSDK)\ProjectSettings\PropertySheets\3dsmax.general.project.settings.props"
+          Condition="'$(MaxSDK)' != '' and Exists('$(MaxSDK)\ProjectSettings\PropertySheets\3dsmax.general.project.settings.props')" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="PropertySheets">
-    <Import Project="$(MaxSDK)\ProjectSettings\PropertySheets\3dsmax.cpp.props" />
+    <Import Project="$(MaxSDK)\ProjectSettings\PropertySheets\3dsmax.cpp.props"
+            Condition="'$(MaxSDK)' != '' and Exists('$(MaxSDK)\ProjectSettings\PropertySheets\3dsmax.cpp.props')" />
   </ImportGroup>
   <PropertyGroup>
     <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
-    <OutDir Condition="'$(Platform)'=='x64'">D:\PycharmProjects\CADDimension\x64\Release\Plugins\</OutDir>
-    <IntDir>$(ProjectDir)\obj\$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)x64\$(Configuration)\Plugins\</OutDir>
+    <IntDir>$(ProjectDir)obj\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>CADDimension</TargetName>
     <TargetExt>.dlo</TargetExt>
+    <!-- The SDK ships only lib\x64\Release. All configurations link the same
+         release libraries and must therefore use the /MD release CRT. -->
+    <MaxSdkLib>$(MaxSdkDir)lib\$(Platform)\Release\</MaxSdkLib>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
@@ -40,13 +45,29 @@
       <PreprocessorDefinitions>_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(MaxSdkInc);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <WarningLevel>Level4</WarningLevel>
+      <UndefinePreprocessorDefinitions Condition="'$(Configuration)'=='Debug'">_DEBUG;%(UndefinePreprocessorDefinitions)</UndefinePreprocessorDefinitions>
+      <UndefinePreprocessorDefinitions Condition="'$(Configuration)'=='Hybrid'">_HYBRID;IS_HYBRID;%(UndefinePreprocessorDefinitions)</UndefinePreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)'=='Debug'">NDEBUG;SECURE_SCL=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)'=='Hybrid'">NDEBUG;SECURE_SCL=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <BasicRuntimeChecks Condition="'$(Configuration)'=='Debug' or '$(Configuration)'=='Hybrid'">Default</BasicRuntimeChecks>
+      <RuntimeLibrary Condition="'$(Configuration)'=='Debug' or '$(Configuration)'=='Hybrid'">MultiThreadedDLL</RuntimeLibrary>
+      <AdditionalOptions Condition="'$(Configuration)'=='Debug' or '$(Configuration)'=='Hybrid'">/D_ITERATOR_DEBUG_LEVEL=0 %(AdditionalOptions)</AdditionalOptions>
+      <ProgramDataBaseFileName>$(IntDir)CADDimension.pdb</ProgramDataBaseFileName>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>D:\3dsMaxSDK2027\maxsdk\lib\x64\Release;$(MaxSdkLib);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>bmm.lib;core.lib;Geom.lib;gfx.lib;mesh.lib;maxutil.lib;maxscrpt.lib;manipsys.lib;paramblk2.lib;;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(MaxSdkLib);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>bmm.lib;core.lib;Geom.lib;gfx.lib;mesh.lib;maxutil.lib;maxscrpt.lib;manipsys.lib;paramblk2.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>CADDimension.def</ModuleDefinitionFile>
+      <ProgramDatabaseFile>$(IntDir)CADDimension.pdb</ProgramDatabaseFile>
+      <LinkIncremental Condition="'$(Configuration)'=='Debug' or '$(Configuration)'=='Hybrid'">false</LinkIncremental>
     </Link>
   </ItemDefinitionGroup>
+  <Target Name="ValidateMaxSdk" BeforeTargets="PrepareForBuild">
+    <Error Condition="'$(MaxSDK)' == ''"
+           Text="MAXSDK_DIR is not set. Set it to the 3ds Max SDK root (e.g. D:\3dsMaxSDK2027\maxsdk) or pass /p:MaxSDK=&lt;sdk-root&gt;." />
+    <Error Condition="'$(MaxSDK)' != '' and !Exists('$(MaxSDK)\ProjectSettings\PropertySheets\3dsmax.general.project.settings.props')"
+           Text="3ds Max SDK property sheets not found under '$(MaxSDK)'. Check MAXSDK_DIR / MaxSDK." />
+  </Target>
   <ItemGroup>
     <ClCompile Include="CADDimension.cpp" />
     <ClCompile Include="DllEntry.cpp" />
