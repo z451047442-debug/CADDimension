@@ -14,6 +14,7 @@
 
 #include "CADDimension.h"
 #include <gfx.h>
+#include <hold.h>
 #include <cmath>
 
 //--------------------------------------------------------------------------
@@ -126,7 +127,7 @@ static float DistPointSegment(const Point2& p, const Point2& a, const Point2& b)
 }
 
 //--------------------------------------------------------------------------
-// 参数块访问器：MAXScript / 参数面板设置 targetNode 时同步引用槽并刷新视口
+// 参数块访问器：MAXScript / 参数面板设置 targetNode 时刷新视口
 //--------------------------------------------------------------------------
 class CADDimensionPBAccessor : public PBAccessor
 {
@@ -142,13 +143,13 @@ public:
         if (dim->IsInvalidTarget(node, t)) v.r = nullptr;
     }
 
-    // P_OWNERS_REF: the pblock owns the reference; only invalidate/refresh here.
+    // The pblock owns the reference; only invalidate/refresh here.
     void Set(PB2Value& /*v*/, ReferenceMaker* owner, ParamID id,
              int /*tabIndex*/, TimeValue /*t*/) override
     {
         if (id != p_target || !owner) return;
         CADDimension* dim = static_cast<CADDimension*>(owner);
-        if (dim->m_inRefDeleted) return;
+        if (dim->m_inClone) return;
         dim->ivalid.SetEmpty();
         dim->NotifyDependents(FOREVER, PART_ALL, REFMSG_CHANGE);
     }
@@ -193,8 +194,8 @@ ClassDesc2* GetCADDimensionDesc()
 static ParamBlockDesc2 caddim_param_blk(
     caddim_params, _T("CADDimensionParams"), 0, GetCADDimensionDesc(),
     P_AUTO_CONSTRUCT, kPBlockRef,
-    p_target, _T("targetNode"), TYPE_INODE, P_OWNERS_REF, 0,
-        p_refno, kTargetRef,
+    p_target, _T("targetNode"), TYPE_INODE, P_READ_SECOND_FLAG_VALUE,
+        P_USE_NODE_TM_VALIDITY | P_USE_NODE_OS_VALIDITY, 0,
         p_accessor, &g_caddimAccessor,
         p_nonLocalizedName, _T("Target Node"),
         p_end,
@@ -234,47 +235,68 @@ void CADDimension::Create()
     }
 }
 
+INode* CADDimension::GetTargetNode(TimeValue t) const
+{
+    if (!pblock) return nullptr;
+    Interval v;
+    v.SetInfinite();
+    return pblock->GetINode(p_target, t, v);
+}
+
 RefTargetHandle CADDimension::GetReference(int i)
 {
-    if (i == kPBlockRef) return pblock;
-    if (i == kTargetRef) return static_cast<RefTargetHandle>(targetNode);
-    return nullptr;
+    return (i == kPBlockRef) ? static_cast<RefTargetHandle>(pblock) : nullptr;
 }
 
 void CADDimension::SetReference(int i, RefTargetHandle rtarg)
 {
-    if (i == kPBlockRef) {
+    if (i == kPBlockRef)
         pblock = static_cast<IParamBlock2*>(rtarg);
-        return;
-    }
-    if (i == kTargetRef) {
-        INode* node = static_cast<INode*>(rtarg);
-        targetNode = node;
-        m_targetInvalid = false;
-
-        // R3: safe guard without evaluating the pipeline. GetObjectRef() is the
-        // official way to inspect the node's referenced object (inode.h:868).
-        // Modifier stacks are handled by the evaluated check in
-        // GetTargetWorldBox() and by the recursion depth guard.
-        if (node) {
-            Object* base = node->GetObjectRef();
-            if (base == this ||
-                (base && base->ClassID() == CADDIMENSION_CLASS_ID))
-                m_targetInvalid = true;
-        }
-        ivalid.SetEmpty();
-    }
 }
+
+class CADDimCloneTargetPostPatch : public PostPatchProc
+{
+    IParamBlock2* origPblock;
+    INode*        originalTarget;
+    CADDimension* clonedObj;
+public:
+    CADDimCloneTargetPostPatch(IParamBlock2* p, INode* t, CADDimension* c)
+        : origPblock(p), originalTarget(t), clonedObj(c) {}
+
+    int Proc(RemapDir& remap) override
+    {
+        if (!origPblock || !originalTarget) return TRUE;
+        IParamBlock2* clonedPblock =
+            static_cast<IParamBlock2*>(remap.FindMapping(origPblock));
+        if (!clonedPblock) return TRUE;
+        if (clonedPblock->GetINode(p_target, 0) == originalTarget) return TRUE;
+
+        if (clonedObj) clonedObj->m_inClone = true;
+        const BOOL wasEnabled = clonedPblock->IsNotificationEnabled();
+        clonedPblock->EnableNotifications(FALSE);
+        clonedPblock->SetValue(p_target, 0, originalTarget);
+        clonedPblock->EnableNotifications(wasEnabled);
+        if (clonedObj) clonedObj->m_inClone = false;
+        return TRUE;
+    }
+};
 
 RefTargetHandle CADDimension::Clone(RemapDir& remap)
 {
     CADDimension* obj = new CADDimension();
+    INode* originalTarget = GetTargetNode(0);
 
-    // R1: BaseClone clones all references (including the pblock and slot 1).
     BaseClone(this, obj, remap);
 
-    // D4: the dimension clone keeps the original target, not a remapped clone.
-    if (targetNode) obj->ReplaceReference(kTargetRef, targetNode);
+    // BaseClone copies base-class data; clone the pblock reference explicitly
+    // (see ref.h:2073-2100 and the CAT CloneParamBlock sample).
+    if (pblock) obj->ReplaceReference(kPBlockRef, remap.CloneRef(pblock));
+
+    // D4: the pblock is the only storage. Fix it after RemapDir backpatching,
+    // otherwise the cloned target can be overwritten by the backpatch pass.
+    if (originalTarget && pblock)
+        remap.AddPostPatchProc(
+            new CADDimCloneTargetPostPatch(pblock, originalTarget, obj), true);
 
     obj->ivalid.SetEmpty();
     return obj;
@@ -286,37 +308,67 @@ RefResult CADDimension::NotifyRefChanged(const Interval& /*changeInt*/,
                                          RefMessage message,
                                          BOOL /*propagate*/)
 {
-    // R2: pblock->RefDeleted() may notify; never re-enter the handler.
-    if (m_inRefDeleted) return REF_SUCCEED;
+    if (m_inClone) return REF_SUCCEED;
 
-    if (message == REFMSG_CHANGE) {
-        // 参数块变化（文字大小/偏移）或目标节点移动/修改，都必须让节点重绘。
-        if (hTarget == pblock || hTarget == static_cast<RefTargetHandle>(targetNode)) {
+    if (message == REFMSG_CHANGE || message == REFMSG_SUBANIM_STRUCTURE_CHANGED) {
+        if (hTarget == pblock) {
+            // The pblock owns the node reference. If the target was deleted,
+            // GetTargetNode() returns null and the no-target marker is drawn.
             ivalid.SetEmpty();
             NotifyDependents(FOREVER, PART_ALL, REFMSG_CHANGE);
         }
     }
     else if (message == REFMSG_TARGET_DELETED) {
-        if (hTarget == static_cast<RefTargetHandle>(targetNode)) {
-            // ref.h:207-223: clear the reference storage directly. Do not call
-            // DeleteReference()/ReplaceReference() from this notification.
-            m_inRefDeleted = true;
-            targetNode = nullptr;
-            m_targetInvalid = false;
-            if (pblock) pblock->RefDeleted(p_target);
-            m_inRefDeleted = false;
-            ivalid.SetEmpty();
-            NotifyDependents(FOREVER, PART_ALL, REFMSG_CHANGE);
-        }
+        // The pblock handles the node reference; never call
+        // DeleteReference()/ReplaceReference() from this notification.
+        ivalid.SetEmpty();
+        NotifyDependents(FOREVER, PART_ALL, REFMSG_CHANGE);
     }
     return REF_SUCCEED;
 }
 
+class CADDimTargetRestore : public RestoreObj
+{
+    CADDimension* dim;
+    INode*        oldTarget;
+    INode*        newTarget;
+public:
+    CADDimTargetRestore(CADDimension* d, INode* o, INode* n)
+        : dim(d), oldTarget(o), newTarget(n) {}
+
+    void Restore(int /*isUndo*/) override
+    {
+        if (dim) dim->ApplyTargetNode(oldTarget, GetCOREInterface()->GetTime());
+    }
+
+    void Redo() override
+    {
+        if (dim) dim->ApplyTargetNode(newTarget, GetCOREInterface()->GetTime());
+    }
+
+    int Size() override { return sizeof(*this); }
+};
+
+void CADDimension::ApplyTargetNode(INode* node, TimeValue t)
+{
+    // Undo-free raw setter; used by SetTargetNode() and CADDimTargetRestore.
+    if (pblock) pblock->SetValue(p_target, t, node);
+}
+
 void CADDimension::SetTargetNode(INode* node, TimeValue t)
 {
-    // P_OWNERS_REF: the pblock writes directly to reference slot kTargetRef.
-    // PreSet validates; Set invalidates and refreshes.
-    if (pblock) pblock->SetValue(p_target, t, node);
+    INode* oldTarget = GetTargetNode(t);
+    if (oldTarget == node) return;
+
+    if (theHold.Holding()) {
+        // A panel pick or another transaction already owns the undo record.
+        ApplyTargetNode(node, t);
+    } else {
+        theHold.Begin();
+        theHold.Put(new CADDimTargetRestore(this, oldTarget, node));
+        ApplyTargetNode(node, t);
+        theHold.Accept(_T("CADDimension Target"));
+    }
 }
 
 MSTR CADDimension::SubAnimName(int i, bool localized)
@@ -345,10 +397,11 @@ ObjectState CADDimension::Eval(TimeValue /*t*/)
     return ObjectState(this);
 }
 
-Interval CADDimension::ObjectValidity(TimeValue /*t*/)
+Interval CADDimension::ObjectValidity(TimeValue t)
 {
-    Interval iv;
-    iv.SetInfinite();
+    Interval iv = Object::ObjectValidity(t);
+    iv &= ivalid;
+    if (pblock) pblock->GetValidity(t, iv);
     return iv;
 }
 
@@ -397,11 +450,12 @@ bool CADDimension::IsInvalidTarget(INode* node, TimeValue t) const
 bool CADDimension::GetTargetWorldBox(TimeValue t, Box3& box) const
 {
     box.Init();
-    if (!targetNode || m_targetInvalid) return false;
+    INode* target = GetTargetNode(t);
+    if (!target) return false;
 
     // EvalWorldState 会评估修改器堆栈；GetDeformBBox 的 tm 参数传入
     // node->GetObjectTM()，得到的就是世界空间包围盒。
-    const ObjectState os = targetNode->EvalWorldState(t);
+    const ObjectState os = target->EvalWorldState(t);
     if (!os.obj || os.obj == this || os.obj->ClassID() == CADDIMENSION_CLASS_ID)
         return false;
 
@@ -415,7 +469,7 @@ bool CADDimension::GetTargetWorldBox(TimeValue t, Box3& box) const
         ~DepthGuard() { --d; }
     } guard(s_depth);
 
-    Matrix3 otm = targetNode->GetObjectTM(t);
+    Matrix3 otm = target->GetObjectTM(t);
     os.obj->GetDeformBBox(t, box, &otm, FALSE);
 
     if (box.IsEmpty()) {

@@ -40,15 +40,16 @@ extern HINSTANCE hInstance;
 // 参数块 ID / 参数 ID / 引用槽
 enum CADDimBlockIDs { caddim_params = 0 };
 enum CADDimParamIDs { p_target = 0, p_text_size, p_dim_offset };
-enum CADDimRefSlots { kPBlockRef = 0, kTargetRef = 1 };
+enum CADDimRefSlots { kPBlockRef = 0 };
 
 class CADDimensionPBAccessor;
+class CADDimTargetRestore;
+class CADDimCloneTargetPostPatch;
 
 class CADDimension : public GeomObject
 {
 public:
-    IParamBlock2* pblock = nullptr;     // 引用槽 0：参数块
-    INode*        targetNode = nullptr; // 引用槽 1：被标注的节点
+    IParamBlock2* pblock = nullptr;     // 引用槽 0：参数块（唯一引用源）
     Interval      ivalid;
 
     CADDimension();
@@ -67,7 +68,7 @@ public:
     RefTargetHandle Clone(RemapDir& remap) override;
     RefResult NotifyRefChanged(const Interval& changeInt, RefTargetHandle hTarget,
                                PartID& partID, RefMessage message, BOOL propagate) override;
-    int NumRefs() override { return 2; }
+    int NumRefs() override { return 1; }
     RefTargetHandle GetReference(int i) override;
     void SetReference(int i, RefTargetHandle rtarg) override;
     int NumSubs() override { return 1; }
@@ -102,15 +103,17 @@ public:
 
 private:
     friend class CADDimensionPBAccessor;
+    friend class CADDimTargetRestore;
+    friend class CADDimCloneTargetPostPatch;
 
-    // R2: re-entrancy guard around pblock->RefDeleted() during target deletion.
-    bool m_inRefDeleted = false;
-    // R3: target identified as a CADDimension/self at bind time (no pipeline eval).
-    bool m_targetInvalid = false;
+    // Set while Clone's PostPatchProc rewrites the cloned pblock target.
+    bool m_inClone = false;
 
     struct ScreenSeg   { IPoint2 a, b; };
     struct ScreenLabel { IPoint2 pos; MSTR text; };
 
+    INode* GetTargetNode(TimeValue t) const;
+    void   ApplyTargetNode(INode* node, TimeValue t);
     bool   IsInvalidTarget(INode* node, TimeValue t) const;
     bool   GetTargetWorldBox(TimeValue t, Box3& box) const;
     Point2 MapWorldToScreen(GraphicsWindow* gw, const Point3& world, bool& ok) const;

@@ -14,3 +14,5 @@ build.log
 # Probe artifacts
 scripts/probe_b1*.log
 scripts/probe_b1_scene.max
+scripts/probe_b1_roundtrip.max
+scripts/make_legacy_b1*.log

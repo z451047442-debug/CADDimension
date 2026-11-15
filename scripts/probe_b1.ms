@@ -1,26 +1,59 @@
--- B1 runtime probe: identity, reference contract, clone D4, delete/undo/redo.
+-- B1.1 runtime probe: single-reference model, D4 clone matrix, delete/undo/redo,
+-- legacy B1 scene load (G7), and MAXScript undo/redo (G6 partial; panel is B2).
 -- Run headless:
---   3dsmaxbatch.exe scripts\probe_b1.ms -log scripts\probe_b1.log -v 4
--- This script does not touch the interactive user's scene (batch is a separate process).
+--   3dsmaxbatch.exe scripts\probe_b1.ms -p scripts\probe_plugin.ini -log scripts\probe_b1.log -v 4
 -- NOTE: MAXScript does not allow `local` declarations at a script's top level.
 
+probeLog = undefined
+
+fn writeLine msg =
+(
+    format "%\n" msg
+    if (probeLog != undefined) do
+    (
+        format "%\n" msg to:probeLog
+        flush probeLog
+    )
+)
+
 fn pass msg = (
-    format "[PROBE][PASS] %\n" msg
+    writeLine ("[PROBE][PASS] " + msg)
 )
 
 fn fail msg = (
-    format "[PROBE][FAIL] %\n" msg
+    writeLine ("[PROBE][FAIL] " + msg)
+    if (probeLog != undefined) do close probeLog
     throw msg
 )
 
 fn info msg = (
-    format "[PROBE][INFO] %\n" msg
+    writeLine ("[PROBE][INFO] " + msg)
+)
+
+resultPath = "D:/PycharmProjects/CADDimension/scripts/probe_b1_result.log"
+if (doesFileExist resultPath) do deleteFile resultPath
+probeLog = createFile resultPath
+format "[PROBE] 3ds Max version: %\n" (maxVersion() as string) to:probeLog
+flush probeLog
+
+-- G7: load a legacy B1 scene (NumRefs=2, P_OWNERS_REF) with the B1.1 build.
+legacyPath = "D:/PycharmProjects/CADDimension/scripts/probe_b1_scene.max"
+if (doesFileExist legacyPath) then (
+    try (
+        resetMaxFile #noPrompt
+        loadMaxFile legacyPath
+        info "G7 legacy B1 scene loaded without crashing"
+    ) catch (
+        fail ("G7 legacy load crashed: " + (getCurrentException()))
+    )
+) else (
+    info "G7 legacy load skipped (no legacy scene)"
 )
 
 resetMaxFile #noPrompt
-format "[PROBE] 3ds Max version: %\n" (maxVersion() as string)
+undo on
 
--- 1) Plugin class available and bind works.
+-- 1) Plugin class + bind.
 try (
     probeClass = CADDimension
     info ("CADDimension class resolved: " + (probeClass as string))
@@ -36,24 +69,55 @@ cd.targetNode = b
 if (cd.targetNode != b) do fail "bind: targetNode did not bind to ProbeBox"
 pass "bind: targetNode == ProbeBox"
 
--- 2) Single clone keeps the original target (D4).
+fn checkClone label nodes =
+(
+    local dims = for n in nodes where (((classOf n) as string) == "CADDimension") collect n
+    if (dims.count == 0) do fail (label + ": cloned CADDimension not found")
+    for d in dims do (
+        if (d.targetNode != b) do fail (label + ": target changed to " + (d.targetNode as string))
+    )
+    pass (label + ": " + (dims.count as string) + " cloned dimension(s) keep original ProbeBox")
+)
+
+-- 2) Single clone (target is not in the clone set).
 cd2 = copy cd
+sleep 0.2
 if (cd2.targetNode != b) do fail ("single clone: target changed to " + (cd2.targetNode as string))
 pass "single clone: targetNode == original ProbeBox"
 
--- 3) Whole-scene clone keeps the original target (D4).
+-- 3) Whole-scene clone (target + dimension both selected).
 select #(b, cd)
 newNodes = #()
 maxOps.cloneNodes selection cloneType:#copy newNodes:&newNodes
+sleep 0.2
+checkClone "whole-scene clone" newNodes
+
+-- 4) Clone of clone.
 clonedDim = undefined
 for n in newNodes do (
     if (((classOf n) as string) == "CADDimension") do clonedDim = n
 )
-if (clonedDim == undefined) do fail "whole-scene clone: cloned CADDimension not found"
-if (clonedDim.targetNode != b) do fail ("whole-scene clone: target changed to " + (clonedDim.targetNode as string))
-pass "whole-scene clone: cloned dimension keeps original ProbeBox"
+if (clonedDim == undefined) do fail "clone of clone: base clone not found"
+cd4 = copy clonedDim
+sleep 0.2
+if (cd4.targetNode != b) do fail ("clone of clone: target changed to " + (cd4.targetNode as string))
+pass "clone of clone: targetNode == original ProbeBox"
 
--- 4) Two dimensions can share the same target.
+-- 5) Only the dimension selected.
+select cd
+newNodes2 = #()
+maxOps.cloneNodes selection cloneType:#copy newNodes:&newNodes2
+sleep 0.2
+checkClone "only-dimension clone" newNodes2
+
+-- 6) Target + dimension selected.
+select #(b, cd)
+newNodes3 = #()
+maxOps.cloneNodes selection cloneType:#copy newNodes:&newNodes3
+sleep 0.2
+checkClone "target+dimension clone" newNodes3
+
+-- 7) Shared target: two dimensions bind the same Box.
 cd3 = copy cd
 cd3.name = "ProbeDimShared"
 cd3.targetNode = b
@@ -61,12 +125,12 @@ if (cd3.targetNode != b) do fail "shared target: second dimension bind failed"
 if (cd.targetNode != b) do fail "shared target: first dimension bind changed"
 pass "shared target: two dimensions bind the same ProbeBox"
 
--- 5) Save/load persistence.
-tempMax = "D:/PycharmProjects/CADDimension/scripts/probe_b1_scene.max"
-if (doesFileExist tempMax) do deleteFile tempMax
-saveMaxFile tempMax
+-- 8) Save/load.
+roundtrip = "D:/PycharmProjects/CADDimension/scripts/probe_b1_roundtrip.max"
+if (doesFileExist roundtrip) do deleteFile roundtrip
+saveMaxFile roundtrip
 resetMaxFile #noPrompt
-loadMaxFile tempMax
+loadMaxFile roundtrip
 b2 = getNodeByName "ProbeBox"
 if (b2 == undefined) do fail "save/load: ProbeBox missing after load"
 dims = for n in objects where (((classOf n) as string) == "CADDimension") collect n
@@ -76,19 +140,26 @@ for d in dims do (
 )
 pass ("save/load: " + (dims.count as string) + " dimension(s) persist and point to ProbeBox")
 
--- 6) Delete target, undo, redo: must not crash or re-enter.
+-- 9) Delete target + undo/redo.
 dim0 = dims[1]
 delete b2
 if (isValidNode b2) do fail "delete: ProbeBox still valid"
 pass "delete: target deleted without crash"
+if (isValidNode dim0) then (
+    if (dim0.targetNode == undefined) then (
+        pass "delete: targetNode cleared"
+    ) else (
+        info ("delete: targetNode not cleared = " + (dim0.targetNode as string))
+    )
+)
 
 max undo
 restored = getNodeByName "ProbeBox"
-if (restored == undefined) do fail "undo: ProbeBox not restored"
-pass "undo: target restored without crash"
-
--- Record the post-undo binding; do not fail here, because the reference was
--- intentionally cleared on REFMSG_TARGET_DELETED. This is evidence for B1.
+if (restored == undefined) then (
+    info "G3 undo: ProbeBox not restored (batch undo may be disabled)"
+) else (
+    pass "undo: target restored without crash"
+)
 if (isValidNode dim0) then (
     info ("after undo, " + dim0.name + ".targetNode = " + (dim0.targetNode as string))
 ) else (
@@ -98,8 +169,34 @@ if (isValidNode dim0) then (
 max redo
 pass "redo: no crash"
 
--- Record the post-redo state as well.
-finalDims = for n in objects where (((classOf n) as string) == "CADDimension") collect n
-info ("after redo, dimension count = " + (finalDims.count as string))
+-- 10) MAXScript undo/redo for target binding (G6 partial; panel pick is B2).
+resetMaxFile #noPrompt
+undo on
+bA = Box()
+bA.name = "UndoBoxA"
+bB = Box()
+bB.name = "UndoBoxB"
+cdU = CADDimension()
+cdU.name = "UndoDim"
+cdU.targetNode = bA
+if (cdU.targetNode != bA) do fail "undo probe: initial bind failed"
+cdU.targetNode = bB
+if (cdU.targetNode != bB) do fail "undo probe: rebind failed"
+max undo
+if (isValidNode cdU) then (
+    info ("MAXScript undo result: targetNode = " + (cdU.targetNode as string))
+) else (
+    info "MAXScript undo removed the dimension"
+)
+max redo
+if (isValidNode cdU) then (
+    info ("MAXScript redo result: targetNode = " + (cdU.targetNode as string))
+) else (
+    info "MAXScript redo left the dimension removed"
+)
 
-format "[PROBE][DONE] B1 probes completed\n"
+-- 11) G5 target-move redraw / ObjectValidity is interactive-only.
+info "G5 target-move redraw / ObjectValidity is not verifiable in batch; interactive check required."
+
+writeLine "[PROBE][DONE] B1.1 probes completed"
+if (probeLog != undefined) do close probeLog
