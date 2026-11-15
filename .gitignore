@@ -1,0 +1,12 @@
+# Build outputs
+obj/
+x64/
+.vs/
+build.log
+
+# Visual Studio user-specific files
+*.user
+*.suo
+
+# Claude Code local settings
+.claude/settings.local.json

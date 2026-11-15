@@ -1,0 +1,9 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="Hybrid" />
+    <BuildType Name="Release" />
+    <Platform Name="x64" />
+  </Configurations>
+  <Project Path="CADDimension.vcxproj" Id="75e6d57f-3cde-4066-a3cf-8b2280699325" />
+</Solution>
