@@ -75,7 +75,6 @@ __declspec( dllexport ) ULONG LibVersion()
 // on your DLL, and send you a message.
 __declspec( dllexport ) int LibInitialize(void)
 {
-	#pragma message(TODO("Perform initialization here."))
 	return TRUE;
 }
 
@@ -84,7 +83,6 @@ __declspec( dllexport ) int LibInitialize(void)
 // The system doesn't pay attention to a return value.
 __declspec( dllexport ) int LibShutdown(void)
 {
-	#pragma message(TODO("Perform un-initialization here."))
 	return TRUE;
 }
 

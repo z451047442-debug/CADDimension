@@ -31,6 +31,8 @@ static float ClampF(float v, float lo, float hi)
 
 static int RoundI(float v)
 {
+    if (!std::isfinite(v)) return 0;
+    v = ClampF(v, -1.0e6f, 1.0e6f);
     return static_cast<int>(std::floor(v + 0.5f));
 }
 
@@ -742,25 +744,31 @@ Point2 CADDimension::MapWorldToScreen(GraphicsWindow* gw, const Point3& world, b
     return Point2(static_cast<float>(p.x), static_cast<float>(p.y));
 }
 
+static void SetCADDimColor(GraphicsWindow* gw, const Point3& color)
+{
+    gw->setColor(LINE_COLOR, color);
+    gw->setColor(TEXT_COLOR, color);
+}
+
 void CADDimension::SetupLineColor(GraphicsWindow* gw, INode* inode) const
 {
     if (!inode) {
-        gw->setColor(LINE_COLOR, Point3(0.9f, 0.9f, 0.2f));
+        SetCADDimColor(gw, Point3(0.9f, 0.9f, 0.2f));
         return;
     }
     if (inode->Selected()) {
-        gw->setColor(LINE_COLOR, GetSelColor());
+        SetCADDimColor(gw, GetSelColor());
         return;
     }
     if (inode->IsFrozen()) {
-        gw->setColor(LINE_COLOR, GetFreezeColor());
+        SetCADDimColor(gw, GetFreezeColor());
         return;
     }
     const DWORD c = inode->GetWireColor();
-    gw->setColor(LINE_COLOR,
-                 Point3(GetRValue(c) / 255.0f,
-                        GetGValue(c) / 255.0f,
-                        GetBValue(c) / 255.0f));
+    SetCADDimColor(gw,
+                   Point3(GetRValue(c) / 255.0f,
+                          GetGValue(c) / 255.0f,
+                          GetBValue(c) / 255.0f));
 }
 
 //--------------------------------------------------------------------------
