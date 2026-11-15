@@ -3,9 +3,9 @@
 // AutoCAD 风格的视口尺寸标注对象（3ds Max 2027 SDK）
 //
 // 核心思路：
-//   1. 通过参数块 TYPE_INODE 参数 + 独立引用槽绑定目标节点；
-//   2. 目标包围盒用 INode::EvalWorldState() + Object::GetDeformBBox()
-//      获取（传入 node->GetObjectTM()，直接得到世界空间盒）；
+//   1. 通过参数块 TYPE_INODE 参数（pblock 唯一引用源）绑定目标节点；
+//   2. 目标包围盒用 GetDeformBBox(t, box, nullptr) 取局部盒，8 个角点经
+//      node->GetObjectTM() 变换为世界坐标；尺寸标签取局部盒；
 //   3. 用 GraphicsWindow::wTransPoint() 把世界点变换到屏幕坐标
 //      （2027 SDK 中 ViewExp 没有 MapWorldToScreen()）；
 //   4. 用 wPolyline()/wText() 在屏幕空间绘制，因此线宽/字号天然不随
@@ -587,14 +587,14 @@ bool CADDimension::IsInvalidTarget(INode* node, TimeValue t) const
     return obj == this || (obj && obj->ClassID() == CADDIMENSION_CLASS_ID);
 }
 
-bool CADDimension::GetTargetWorldBox(TimeValue t, Box3& box) const
+bool CADDimension::GetTargetBoxes(TimeValue t, Box3& localBox, Box3& worldBox, Matrix3& otm) const
 {
-    box.Init();
+    localBox.Init();
+    worldBox.Init();
+
     INode* target = GetTargetNode(t);
     if (!target) return false;
 
-    // EvalWorldState 会评估修改器堆栈；GetDeformBBox 的 tm 参数传入
-    // node->GetObjectTM()，得到的就是世界空间包围盒。
     const ObjectState os = target->EvalWorldState(t);
     if (!os.obj || os.obj == this || os.obj->ClassID() == CADDIMENSION_CLASS_ID)
         return false;
@@ -609,16 +609,32 @@ bool CADDimension::GetTargetWorldBox(TimeValue t, Box3& box) const
         ~DepthGuard() { --d; }
     } guard(s_depth);
 
-    Matrix3 otm = target->GetObjectTM(t);
-    os.obj->GetDeformBBox(t, box, &otm, FALSE);
+    otm = target->GetObjectTM(t);
+    os.obj->GetDeformBBox(t, localBox, nullptr, FALSE);
+    if (localBox.IsEmpty()) return false;
 
-    if (box.IsEmpty()) {
-        // 灯光/空对象等可能没有 deform 包围盒，退回节点位置的小盒。
-        // B3 replaces this with an explicit "unsupported" marker.
-        const Point3 c = otm.GetTrans();
-        box.pmin = c - Point3(1.0f, 1.0f, 1.0f);
-        box.pmax = c + Point3(1.0f, 1.0f, 1.0f);
-    }
+    // Lights are never dimensionable; a helper is allowed only when it exposes
+    // a real deform box (e.g. TapeHelp), which the empty-box check above covers.
+    if (os.obj->SuperClassID() == LIGHT_CLASS_ID) return false;
+
+    Point3 corners[8];
+    BoxCorners(localBox, corners);
+    worldBox.IncludePoints(corners, 8, &otm);
+    return true;
+}
+
+bool CADDimension::GetTargetDrawData(TimeValue t, Point3 worldCorners[8], Point3& localSize) const
+{
+    Box3 localBox, worldBox;
+    Matrix3 otm;
+    if (!GetTargetBoxes(t, localBox, worldBox, otm)) return false;
+
+    Point3 corners[8];
+    BoxCorners(localBox, corners);
+    for (int i = 0; i < 8; ++i)
+        worldCorners[i] = corners[i] * otm;
+
+    localSize = localBox.pmax - localBox.pmin;
     return true;
 }
 
@@ -626,13 +642,19 @@ bool CADDimension::BoundingBox(TimeValue t, Box3& box) const
 {
     // 现代 SDK 没有 Object::BoundingBox() 虚函数；保留此辅助函数，
     // 供 Display/HitTest/GetWorldBoundBox 复用同一套包围盒逻辑。
-    return GetTargetWorldBox(t, box);
+    Box3 localBox, worldBox;
+    Matrix3 otm;
+    if (!GetTargetBoxes(t, localBox, worldBox, otm) || worldBox.IsEmpty())
+        return false;
+    box = worldBox;
+    return true;
 }
 
 void CADDimension::GetWorldBoundBox(TimeValue t, INode* inode, ViewExp* vp, Box3& box)
 {
-    Box3 wb;
-    if (GetTargetWorldBox(t, wb)) {
+    Box3 localBox, wb;
+    Matrix3 otm;
+    if (GetTargetBoxes(t, localBox, wb, otm)) {
         float margin = 0.0f;
         if (vp && vp->IsAlive()) {
             GraphicsWindow* gw = vp->getGW();
@@ -659,7 +681,7 @@ void CADDimension::GetWorldBoundBox(TimeValue t, INode* inode, ViewExp* vp, Box3
         return;
     }
 
-    // 未绑定目标：在对象节点位置显示一个小十字。
+    // 未绑定/不支持目标：在对象节点位置显示一个小十字。
     const Point3 c = inode ? inode->GetObjectTM(t).GetTrans() : Point3(0, 0, 0);
     float s = 1.0f;
     if (vp && vp->IsAlive()) {
@@ -677,8 +699,9 @@ void CADDimension::GetWorldBoundBox(TimeValue t, INode* inode, ViewExp* vp, Box3
 
 void CADDimension::GetLocalBoundBox(TimeValue t, INode* inode, ViewExp* /*vp*/, Box3& box)
 {
-    Box3 wb;
-    if (!inode || !GetTargetWorldBox(t, wb) || wb.IsEmpty()) {
+    Box3 localBox, wb;
+    Matrix3 otm;
+    if (!inode || !GetTargetBoxes(t, localBox, wb, otm) || wb.IsEmpty()) {
         box.pmin = Point3(-1, -1, -1);
         box.pmax = Point3(1, 1, 1);
         return;
@@ -693,8 +716,9 @@ void CADDimension::GetLocalBoundBox(TimeValue t, INode* inode, ViewExp* /*vp*/, 
 
 void CADDimension::GetDeformBBox(TimeValue t, Box3& box, Matrix3* tm, BOOL /*useSel*/)
 {
-    Box3 wb;
-    if (!GetTargetWorldBox(t, wb) || wb.IsEmpty()) {
+    Box3 localBox, wb;
+    Matrix3 otm;
+    if (!GetTargetBoxes(t, localBox, wb, otm) || wb.IsEmpty()) {
         box.Init();
         return;
     }
@@ -768,16 +792,20 @@ int CADDimension::Display(TimeValue t, INode* inode, ViewExp* vpt, int /*flags*/
     const float oldTextPt = gw->GetTextPointSize();
     gw->SetTextPointSize(ClampF(textPt * ns, 6.0f, 40.0f));
 
-    Box3 box;
-    if (GetTargetWorldBox(t, box)) {
+    Point3 worldCorners[8];
+    Point3 localSize;
+    if (GetTargetDrawData(t, worldCorners, localSize)) {
         ScreenSeg   segs[48];
         ScreenLabel labels[4];
         int nLabels = 0;
-        const int nSeg = BuildScreenPrimitives(t, vpt, box, segs, 48, labels, 4, nLabels);
+        const int nSeg = BuildScreenPrimitives(t, vpt, worldCorners, localSize,
+                                               segs, 48, labels, 4, nLabels);
         for (int i = 0; i < nSeg; ++i)  DrawScreenSeg(gw, segs[i]);
         for (int i = 0; i < nLabels; ++i) DrawScreenLabel(gw, labels[i]);
     } else {
-        DrawNoTargetMarker(gw, vpt, inode, t);
+        INode* target = GetTargetNode(t);
+        DrawNoTargetMarker(gw, vpt, inode, t,
+            target ? _T("CADDimension: unsupported target") : _T("CADDimension: no target"));
     }
 
     gw->SetTextPointSize(oldTextPt);
@@ -789,7 +817,8 @@ int CADDimension::Display(TimeValue t, INode* inode, ViewExp* vpt, int /*flags*/
 //--------------------------------------------------------------------------
 // 生成屏幕空间标注：包围盒 12 条边 + X/Y/Z 三条尺寸线 + 箭头 + 文字
 //--------------------------------------------------------------------------
-int CADDimension::BuildScreenPrimitives(TimeValue t, ViewExp* vpt, const Box3& box,
+int CADDimension::BuildScreenPrimitives(TimeValue t, ViewExp* vpt,
+                                        const Point3 worldCorners[8], const Point3& localSize,
                                         ScreenSeg* segs, int maxSegs,
                                         ScreenLabel* labels, int maxLabels, int& nLabels) const
 {
@@ -807,13 +836,10 @@ int CADDimension::BuildScreenPrimitives(TimeValue t, ViewExp* vpt, const Box3& b
         pblock->GetValue(p_dim_offset, t, baseOffset, v);
     }
 
-    Point3 corners[8];
-    BoxCorners(box, corners);
-
     Point2 sc[8];
     bool   okp[8];
     for (int i = 0; i < 8; ++i)
-        sc[i] = MapWorldToScreen(gw, corners[i], okp[i]);
+        sc[i] = MapWorldToScreen(gw, worldCorners[i], okp[i]);
 
     float minX = 1.0e30f, minY = 1.0e30f;
     float maxX = -1.0e30f, maxY = -1.0e30f;
@@ -893,9 +919,9 @@ int CADDimension::BuildScreenPrimitives(TimeValue t, ViewExp* vpt, const Box3& b
 
         if (labels && nLabels < maxLabels) {
             MCHAR buf[96];
-            const float val = (axis == 0) ? (box.pmax.x - box.pmin.x)
-                              : (axis == 1) ? (box.pmax.y - box.pmin.y)
-                                            : (box.pmax.z - box.pmin.z);
+            const float val = (axis == 0) ? localSize.x
+                              : (axis == 1) ? localSize.y
+                                            : localSize.z;
             _stprintf_s(buf, _countof(buf), _T("%s %.3f"), axisName[axis], val);
             const Point2 lp = (a2 + b2) * 0.5f + n * (11.0f * ns);
             labels[nLabels].pos = ToScreenPoint(lp);
@@ -908,9 +934,7 @@ int CADDimension::BuildScreenPrimitives(TimeValue t, ViewExp* vpt, const Box3& b
     if (labels && nLabels < maxLabels) {
         MCHAR buf[160];
         _stprintf_s(buf, _countof(buf), _T("X %.3f   Y %.3f   Z %.3f"),
-                    box.pmax.x - box.pmin.x,
-                    box.pmax.y - box.pmin.y,
-                    box.pmax.z - box.pmin.z);
+                    localSize.x, localSize.y, localSize.z);
         Point2 lp(minX + 4.0f, minY - 18.0f * ns);
         if (lp.y < 18.0f * ns) lp.y = minY + 18.0f * ns;
         labels[nLabels].pos = ToScreenPoint(lp);
@@ -962,7 +986,7 @@ void CADDimension::DrawScreenLabel(GraphicsWindow* gw, const ScreenLabel& label)
 }
 
 void CADDimension::DrawNoTargetMarker(GraphicsWindow* gw, ViewExp* vpt,
-                                      INode* inode, TimeValue t) const
+                                      INode* inode, TimeValue t, const MCHAR* text) const
 {
     if (!inode) return;
 
@@ -983,7 +1007,7 @@ void CADDimension::DrawNoTargetMarker(GraphicsWindow* gw, ViewExp* vpt,
 
     ScreenLabel lab;
     lab.pos = IPoint2(RoundI(c.x), RoundI(c.y + r + 16.0f * ns));
-    lab.text = _T("CADDimension: no target");
+    lab.text = text ? text : _T("CADDimension: no target");
     DrawScreenLabel(gw, lab);
 }
 
@@ -1009,12 +1033,14 @@ int CADDimension::HitTest(TimeValue t, INode* inode, int type, int crossing,
     gw->setTransform(Matrix3()); // 单位矩阵：wTransPoint 按世界坐标解释
 
     bool hit = false;
-    Box3 box;
-    if (GetTargetWorldBox(t, box)) {
+    Point3 worldCorners[8];
+    Point3 localSize;
+    if (GetTargetDrawData(t, worldCorners, localSize)) {
         ScreenSeg   segs[48];
         ScreenLabel labels[4];
         int nLabels = 0;
-        const int nSeg = BuildScreenPrimitives(t, vpt, box, segs, 48, labels, 4, nLabels);
+        const int nSeg = BuildScreenPrimitives(t, vpt, worldCorners, localSize,
+                                               segs, 48, labels, 4, nLabels);
         hit = HitSegments(hr, segs, nSeg);
     } else {
         bool ok = false;

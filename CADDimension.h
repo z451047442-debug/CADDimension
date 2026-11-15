@@ -130,17 +130,20 @@ private:
     INode* GetTargetNode(TimeValue t) const;
     void   ApplyTargetNode(INode* node, TimeValue t);
     bool   IsInvalidTarget(INode* node, TimeValue t) const;
-    bool   GetTargetWorldBox(TimeValue t, Box3& box) const;
+    bool   GetTargetBoxes(TimeValue t, Box3& localBox, Box3& worldBox, Matrix3& otm) const;
+    bool   GetTargetDrawData(TimeValue t, Point3 worldCorners[8], Point3& localSize) const;
     Point2 MapWorldToScreen(GraphicsWindow* gw, const Point3& world, bool& ok) const;
 
     // 生成屏幕空间的标注线段/文字（包围盒 12 条边 + 3 条尺寸线 + 辅助线/箭头）
-    int BuildScreenPrimitives(TimeValue t, ViewExp* vpt, const Box3& box,
+    int BuildScreenPrimitives(TimeValue t, ViewExp* vpt,
+                              const Point3 worldCorners[8], const Point3& localSize,
                               ScreenSeg* segs, int maxSegs,
                               ScreenLabel* labels, int maxLabels, int& nLabels) const;
 
     void DrawScreenSeg(GraphicsWindow* gw, const ScreenSeg& seg) const;
     void DrawScreenLabel(GraphicsWindow* gw, const ScreenLabel& label) const;
-    void DrawNoTargetMarker(GraphicsWindow* gw, ViewExp* vpt, INode* inode, TimeValue t) const;
+    void DrawNoTargetMarker(GraphicsWindow* gw, ViewExp* vpt, INode* inode, TimeValue t,
+                            const MCHAR* text) const;
     void SetupLineColor(GraphicsWindow* gw, INode* inode) const;
 
     static bool HitSegments(const HitRegion& hr, const ScreenSeg* segs, int nSegs);
