@@ -29,6 +29,7 @@
 #include <iparamb2.h>
 #include <iparamm2.h>
 #include <GraphicsWindow.h>
+#include <type_traits>
 
 extern TCHAR* GetString(int id);
 extern HINSTANCE hInstance;
@@ -43,7 +44,7 @@ enum CADDimRefSlots { kPBlockRef = 0, kTargetRef = 1 };
 
 class CADDimensionPBAccessor;
 
-class CADDimension : public Object
+class CADDimension : public GeomObject
 {
 public:
     IParamBlock2* pblock = nullptr;     // 引用槽 0：参数块
@@ -102,10 +103,15 @@ public:
 private:
     friend class CADDimensionPBAccessor;
 
+    // R2: re-entrancy guard around pblock->RefDeleted() during target deletion.
+    bool m_inRefDeleted = false;
+    // R3: target identified as a CADDimension/self at bind time (no pipeline eval).
+    bool m_targetInvalid = false;
+
     struct ScreenSeg   { IPoint2 a, b; };
     struct ScreenLabel { IPoint2 pos; MSTR text; };
 
-    void   ApplyTargetNode(INode* node, TimeValue t);
+    bool   IsInvalidTarget(INode* node, TimeValue t) const;
     bool   GetTargetWorldBox(TimeValue t, Box3& box) const;
     Point2 MapWorldToScreen(GraphicsWindow* gw, const Point3& world, bool& ok) const;
 
@@ -121,5 +127,8 @@ private:
 
     static bool HitSegments(const HitRegion& hr, const ScreenSeg* segs, int nSegs);
 };
+
+static_assert(std::is_base_of<GeomObject, CADDimension>::value,
+              "CADDimension must derive from GeomObject to match GEOMOBJECT_CLASS_ID");
 
 extern ClassDesc2* GetCADDimensionDesc();
