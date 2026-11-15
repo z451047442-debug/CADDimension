@@ -63,6 +63,8 @@ public:
     SClass_ID   SuperClassID() override { return GEOMOBJECT_CLASS_ID; }
     void        GetClassName(MSTR& s, bool localized) const override;
     void        DeleteThis() override { delete this; }
+    void        BeginEditParams(IObjParam* ip, ULONG flags, Animatable* prev) override;
+    void        EndEditParams(IObjParam* ip, ULONG flags, Animatable* next) override;
 
     // From ReferenceTarget / ReferenceMaker
     RefTargetHandle Clone(RemapDir& remap) override;

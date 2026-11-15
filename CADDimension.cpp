@@ -17,6 +17,7 @@
 #include <hold.h>
 #include <SingleWeakRefMaker.h>
 #include <cmath>
+#include <mouseman.h>
 
 //--------------------------------------------------------------------------
 // 基础工具
@@ -267,20 +268,26 @@ ClassDesc2* GetCADDimensionDesc()
 //--------------------------------------------------------------------------
 static ParamBlockDesc2 caddim_param_blk(
     caddim_params, _T("CADDimensionParams"), 0, GetCADDimensionDesc(),
-    P_AUTO_CONSTRUCT, kPBlockRef,
+    P_AUTO_CONSTRUCT + P_AUTO_UI, kPBlockRef,
+    // rollout
+    IDD_PANEL, IDS_PARAMS, 0, 0, NULL,
+    // params
     p_target, _T("targetNode"), TYPE_INODE, P_READ_SECOND_FLAG_VALUE,
         P_USE_NODE_TM_VALIDITY | P_USE_NODE_OS_VALIDITY, 0,
+        p_ui, TYPE_PICKNODEBUTTON, IDC_PICK_TARGET,
         p_accessor, &g_caddimAccessor,
         p_nonLocalizedName, _T("Target Node"),
         p_end,
     p_text_size, _T("textSize"), TYPE_FLOAT, 0, 0,
         p_default, 12.0f,
         p_range, 6.0f, 48.0f,
+        p_ui, TYPE_SPINNER, EDITTYPE_FLOAT, IDC_TEXT_SIZE_EDIT, IDC_TEXT_SIZE_SPIN, 0.1f,
         p_nonLocalizedName, _T("Text Size"),
         p_end,
     p_dim_offset, _T("dimensionOffset"), TYPE_FLOAT, 0, 0,
         p_default, 28.0f,
         p_range, 8.0f, 200.0f,
+        p_ui, TYPE_SPINNER, EDITTYPE_FLOAT, IDC_OFFSET_EDIT, IDC_OFFSET_SPIN, 0.1f,
         p_nonLocalizedName, _T("Dimension Offset"),
         p_end,
     p_end
@@ -456,6 +463,16 @@ void CADDimension::GetClassName(MSTR& s, bool localized) const
     s = n ? n : _T("CADDimension");
 }
 
+void CADDimension::BeginEditParams(IObjParam* ip, ULONG flags, Animatable* prev)
+{
+    GetCADDimensionDesc()->BeginEditParams(ip, this, flags, prev);
+}
+
+void CADDimension::EndEditParams(IObjParam* ip, ULONG flags, Animatable* next)
+{
+    GetCADDimensionDesc()->EndEditParams(ip, this, flags, next);
+}
+
 ObjectState CADDimension::Eval(TimeValue /*t*/)
 {
     return ObjectState(this);
@@ -470,25 +487,83 @@ Interval CADDimension::ObjectValidity(TimeValue t)
 }
 
 //--------------------------------------------------------------------------
-// 创建鼠标回调：单击一次即可放置标注对象（目标稍后用 MAXScript 绑定）
+// 创建鼠标回调：有单选直接绑定并放置；无单选先拾取目标，再点击放置。
 //--------------------------------------------------------------------------
+static bool IsValidCADDimTarget(INode* node, TimeValue t, CADDimension* dim)
+{
+    if (!node) return false;
+    const ObjectState os = node->EvalWorldState(t);
+    Object* obj = os.obj;
+    return obj && obj != dim && obj->ClassID() != CADDIMENSION_CLASS_ID;
+}
+
+class CADDimPickFilter : public PickNodeCallback
+{
+    CADDimension* dim;
+    TimeValue t;
+public:
+    CADDimPickFilter(CADDimension* d, TimeValue time) : dim(d), t(time) {}
+    BOOL Filter(INode* node) override
+    {
+        return IsValidCADDimTarget(node, t, dim) ? TRUE : FALSE;
+    }
+};
+
 class CADDimensionCreateCallBack : public CreateMouseCallBack
 {
+    CADDimension* ob = nullptr;
+    int stage = 0; // 0 = need target/placement, 1 = target picked, need placement
 public:
+    void SetObj(CADDimension* obj) { ob = obj; stage = 0; }
+
     int proc(ViewExp* vpt, int msg, int /*point*/, int /*flags*/,
              IPoint2 m, Matrix3& mat) override
     {
-        if (!vpt || !vpt->IsAlive()) return FALSE;
+        if (!vpt || !vpt->IsAlive() || !ob) return FALSE;
+
         if (msg == MOUSE_FREEMOVE) {
             vpt->SnapPreview(m, m, nullptr, SNAP_IN_3D);
             return TRUE;
         }
+        if (msg == MOUSE_ABORT || msg == MOUSE_PROPCLICK) {
+            stage = 0;
+            ob = nullptr;
+            return CREATE_ABORT;
+        }
         if (msg == MOUSE_POINT || msg == MOUSE_MOVE) {
             mat.SetTrans(vpt->SnapPoint(m, m, nullptr, SNAP_IN_3D));
-            if (msg == MOUSE_POINT) return 0; // 单击完成
+            if (msg == MOUSE_MOVE) return TRUE;
+
+            Interface* ip = GetCOREInterface();
+            if (!ip) return TRUE;
+            const TimeValue t = ip->GetTime();
+
+            if (stage == 1) {
+                stage = 0;
+                ob = nullptr;
+                return 0; // second click places
+            }
+
+            // Single selection: auto-bind and place with this click.
+            if (ip->GetSelNodeCount() == 1) {
+                INode* sel = ip->GetSelNode(0);
+                if (IsValidCADDimTarget(sel, t, ob)) {
+                    ob->SetTargetNode(sel, t, false);
+                    stage = 0;
+                    ob = nullptr;
+                    return 0;
+                }
+            }
+
+            // No usable single selection: pick the target first, then place.
+            CADDimPickFilter filter(ob, t);
+            INode* picked = ip->PickNode(vpt->GetHWnd(), m, &filter);
+            if (picked) {
+                ob->SetTargetNode(picked, t, false);
+                stage = 1;
+            }
             return TRUE;
         }
-        if (msg == MOUSE_ABORT) return CREATE_ABORT;
         return TRUE;
     }
 };
@@ -497,6 +572,7 @@ static CADDimensionCreateCallBack g_caddimCreateCB;
 
 CreateMouseCallBack* CADDimension::GetCreateMouseCallBack()
 {
+    g_caddimCreateCB.SetObj(this);
     return &g_caddimCreateCB;
 }
 
