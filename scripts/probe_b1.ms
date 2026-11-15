@@ -184,16 +184,39 @@ cdU.targetNode = bB
 if (cdU.targetNode != bB) do fail "undo probe: rebind failed"
 max undo
 if (isValidNode cdU) then (
-    info ("MAXScript undo result: targetNode = " + (cdU.targetNode as string))
+    if (cdU.targetNode != bA) do fail ("MAXScript undo did not restore A: " + (cdU.targetNode as string))
+    pass "MAXScript undo restored previous target"
 ) else (
-    info "MAXScript undo removed the dimension"
+    fail "MAXScript undo removed the dimension"
 )
 max redo
 if (isValidNode cdU) then (
-    info ("MAXScript redo result: targetNode = " + (cdU.targetNode as string))
+    if (cdU.targetNode != bB) do fail ("MAXScript redo did not restore B: " + (cdU.targetNode as string))
+    pass "MAXScript redo restored new target"
 ) else (
-    info "MAXScript redo left the dimension removed"
+    fail "MAXScript redo left the dimension removed"
 )
+
+-- Consecutive assignments: stepwise undo/redo.
+cdU.targetNode = bA
+cdU.targetNode = bB
+max undo
+if (cdU.targetNode != bA) do fail ("consecutive undo #1: " + (cdU.targetNode as string))
+max undo
+if (cdU.targetNode != bB) do fail ("consecutive undo #2: " + (cdU.targetNode as string))
+max redo
+if (cdU.targetNode != bA) do fail ("consecutive redo #1: " + (cdU.targetNode as string))
+max redo
+if (cdU.targetNode != bB) do fail ("consecutive redo #2: " + (cdU.targetNode as string))
+pass "consecutive assignments: stepwise undo/redo"
+
+-- Invalid target must be rejected and the rejection must be undoable.
+cdU.targetNode = cdU
+if (cdU.targetNode != undefined) do fail "invalid target was not rejected"
+pass "invalid target rejected"
+max undo
+if (cdU.targetNode != bB) do fail ("invalid-target undo did not restore B: " + (cdU.targetNode as string))
+pass "invalid target undo restored previous target"
 
 -- 11) G5 target-move redraw / ObjectValidity is interactive-only.
 info "G5 target-move redraw / ObjectValidity is not verifiable in batch; interactive check required."

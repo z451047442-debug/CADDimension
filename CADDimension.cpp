@@ -15,6 +15,7 @@
 #include "CADDimension.h"
 #include <gfx.h>
 #include <hold.h>
+#include <SingleWeakRefMaker.h>
 #include <cmath>
 
 //--------------------------------------------------------------------------
@@ -129,18 +130,59 @@ static float DistPointSegment(const Point2& p, const Point2& a, const Point2& b)
 //--------------------------------------------------------------------------
 // 参数块访问器：MAXScript / 参数面板设置 targetNode 时刷新视口
 //--------------------------------------------------------------------------
+class CADDimTargetRestore : public RestoreObj
+{
+    MaxSDK::TypedSingleWeakRefMaker<CADDimension> dim;
+    MaxSDK::TypedSingleWeakRefMaker<INode>        oldTarget;
+    MaxSDK::TypedSingleWeakRefMaker<INode>        newTarget;
+    TimeValue                                     t;
+
+public:
+    CADDimTargetRestore(CADDimension* d, INode* o, INode* n, TimeValue time)
+        : dim(d), oldTarget(o), newTarget(n), t(time) {}
+
+    void Restore(int /*isUndo*/) override
+    {
+        CADDimension* d = dim.Get();
+        if (!d) return;
+        const bool prev = d->m_inUndoRestore;
+        d->m_inUndoRestore = true;
+        d->ApplyTargetNode(oldTarget.Get(), t);
+        d->m_inUndoRestore = prev;
+    }
+
+    void Redo() override
+    {
+        CADDimension* d = dim.Get();
+        if (!d) return;
+        const bool prev = d->m_inUndoRestore;
+        d->m_inUndoRestore = true;
+        d->ApplyTargetNode(newTarget.Get(), t);
+        d->m_inUndoRestore = prev;
+    }
+
+    int Size() override { return sizeof(*this); }
+};
+
 class CADDimensionPBAccessor : public PBAccessor
 {
 public:
-    // R3: reject invalid targets before the value is stored. TYPE_INODE's v.r
-    // may be null; the "must not set null" rule does not apply to v.r.
     void PreSet(PB2Value& v, ReferenceMaker* owner, ParamID id,
                 int /*tabIndex*/, TimeValue t) override
     {
         if (id != p_target || !owner) return;
         CADDimension* dim = static_cast<CADDimension*>(owner);
-        INode* node = static_cast<INode*>(v.r);
-        if (dim->IsInvalidTarget(node, t)) v.r = nullptr;
+        INode* newNode = static_cast<INode*>(v.r);
+        if (dim->IsInvalidTarget(newNode, t)) v.r = nullptr;
+
+        if (dim->m_inClone || dim->m_suppressUndo || dim->m_inUndoRestore ||
+            theHold.RestoreOrRedoing()) {
+            dim->m_pendingCount = 0;
+            return;
+        }
+
+        INode* oldNode = dim->GetTargetNode(t);
+        dim->PushPendingTarget(oldNode, t);
     }
 
     // The pblock owns the reference; only invalidate/refresh here.
@@ -152,6 +194,38 @@ public:
         if (dim->m_inClone) return;
         dim->ivalid.SetEmpty();
         dim->NotifyDependents(FOREVER, PART_ALL, REFMSG_CHANGE);
+    }
+
+    void PostSet(const PB2Value& /*v*/, ReferenceMaker* owner, ParamID id,
+                 int /*tabIndex*/, TimeValue /*t*/) override
+    {
+        if (id != p_target || !owner) return;
+        CADDimension* dim = static_cast<CADDimension*>(owner);
+        if (dim->m_inClone || dim->m_suppressUndo || dim->m_inUndoRestore ||
+            theHold.RestoreOrRedoing()) {
+            dim->m_pendingCount = 0;
+            return;
+        }
+
+        INode* oldNode = nullptr;
+        TimeValue pendingTime = 0;
+        if (!dim->PopPendingTarget(oldNode, pendingTime)) return;
+        INode* newNode = dim->GetTargetNode(pendingTime);
+        if (oldNode == newNode) return;
+
+        BOOL started = FALSE;
+        if (!theHold.Holding()) {
+            theHold.Begin();
+            started = TRUE;
+        }
+        CADDimTargetRestore* restore =
+            new CADDimTargetRestore(dim, oldNode, newNode, pendingTime);
+        if (!theHold.Put(restore)) {
+            delete restore;
+            if (started) theHold.Cancel();
+            return;
+        }
+        if (started) theHold.Accept(_T("CADDimension Target"));
     }
 };
 
@@ -327,48 +401,38 @@ RefResult CADDimension::NotifyRefChanged(const Interval& /*changeInt*/,
     return REF_SUCCEED;
 }
 
-class CADDimTargetRestore : public RestoreObj
+void CADDimension::PushPendingTarget(INode* oldTarget, TimeValue t)
 {
-    CADDimension* dim;
-    INode*        oldTarget;
-    INode*        newTarget;
-public:
-    CADDimTargetRestore(CADDimension* d, INode* o, INode* n)
-        : dim(d), oldTarget(o), newTarget(n) {}
+    if (m_pendingCount >= kMaxPendingTargets) m_pendingCount = 0;
+    m_pendingTargets[m_pendingCount].oldTarget = oldTarget;
+    m_pendingTargets[m_pendingCount].t = t;
+    ++m_pendingCount;
+    ++m_pendingSeq;
+}
 
-    void Restore(int /*isUndo*/) override
-    {
-        if (dim) dim->ApplyTargetNode(oldTarget, GetCOREInterface()->GetTime());
-    }
-
-    void Redo() override
-    {
-        if (dim) dim->ApplyTargetNode(newTarget, GetCOREInterface()->GetTime());
-    }
-
-    int Size() override { return sizeof(*this); }
-};
+bool CADDimension::PopPendingTarget(INode*& oldTarget, TimeValue& t)
+{
+    if (m_pendingCount <= 0) return false;
+    --m_pendingCount;
+    oldTarget = m_pendingTargets[m_pendingCount].oldTarget;
+    t = m_pendingTargets[m_pendingCount].t;
+    return true;
+}
 
 void CADDimension::ApplyTargetNode(INode* node, TimeValue t)
 {
-    // Undo-free raw setter; used by SetTargetNode() and CADDimTargetRestore.
+    // Undo-free raw setter; PreSet/PostSet handle undo for property sets.
     if (pblock) pblock->SetValue(p_target, t, node);
 }
 
-void CADDimension::SetTargetNode(INode* node, TimeValue t)
+void CADDimension::SetTargetNode(INode* node, TimeValue t, bool allowUndo)
 {
-    INode* oldTarget = GetTargetNode(t);
-    if (oldTarget == node) return;
+    if (GetTargetNode(t) == node) return;
 
-    if (theHold.Holding()) {
-        // A panel pick or another transaction already owns the undo record.
-        ApplyTargetNode(node, t);
-    } else {
-        theHold.Begin();
-        theHold.Put(new CADDimTargetRestore(this, oldTarget, node));
-        ApplyTargetNode(node, t);
-        theHold.Accept(_T("CADDimension Target"));
-    }
+    const bool prev = m_suppressUndo;
+    if (!allowUndo) m_suppressUndo = true;
+    ApplyTargetNode(node, t);
+    m_suppressUndo = prev;
 }
 
 MSTR CADDimension::SubAnimName(int i, bool localized)

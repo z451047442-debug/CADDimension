@@ -99,7 +99,7 @@ public:
     bool BoundingBox(TimeValue t, Box3& box) const;
 
     // 供 UI / 其他代码调用；pblock 的 TYPE_INODE 参数同时暴露给 MAXScript
-    void SetTargetNode(INode* node, TimeValue t);
+    void SetTargetNode(INode* node, TimeValue t, bool allowUndo = true);
 
 private:
     friend class CADDimensionPBAccessor;
@@ -108,6 +108,19 @@ private:
 
     // Set while Clone's PostPatchProc rewrites the cloned pblock target.
     bool m_inClone = false;
+    // Set while RestoreObj applies an undo/redo value.
+    bool m_inUndoRestore = false;
+    // Set while SetTargetNode(..., allowUndo=false) applies a creation bind.
+    bool m_suppressUndo = false;
+
+    // PreSet stores the old target; PostSet consumes it synchronously.
+    struct PendingTarget { INode* oldTarget; TimeValue t; };
+    enum { kMaxPendingTargets = 4 };
+    PendingTarget m_pendingTargets[kMaxPendingTargets] = {};
+    int m_pendingCount = 0;
+    unsigned int m_pendingSeq = 0;
+    void PushPendingTarget(INode* oldTarget, TimeValue t);
+    bool PopPendingTarget(INode*& oldTarget, TimeValue& t);
 
     struct ScreenSeg   { IPoint2 a, b; };
     struct ScreenLabel { IPoint2 pos; MSTR text; };
