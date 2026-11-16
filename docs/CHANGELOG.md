@@ -120,7 +120,9 @@
 - 3ds Max 2027 插件工程：`GeomObject` 派生对象、参数块、屏幕空间尺寸标注、
   包围盒、命中测试、资源与构建工程。
 
-## [Unreleased] - 2026-11-16
+## [1.0.0] - 2026-11-16
+
+> 首个生产版本：四类注释工具集（Dimension/Text/Leader/Table）。
 
 ### Added
 - 单 `.dlo` 四类：`CADDimension`（三点 + `showXYZ` + `p_mode`）、`CADText`、`CADLeader`、`CADTable`。

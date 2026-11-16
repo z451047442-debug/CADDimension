@@ -87,3 +87,4 @@ CADDimension/
 - 三配置构建：`Release` / `Debug` / `Hybrid`，输出 `x64/<Config>/Plugins/CADDimension.dlo` 与 `en-US/CADDimension.dlo.mui`。
 - 自动化探针全部通过：Dimension 29、Text 7、Leader 11、Table 20、B1 16（0 FAIL）。
 - 已确认限制：三击/单击交互、视口视觉、中文面板/MUI、20×20 性能仍需人工验收；`GraphicsWindow` 无 `getColor`，颜色按对象重设。
+- 版本：**1.0.0**（DLL `VERSIONINFO` 1.0.0.0，2026-11-16）。
