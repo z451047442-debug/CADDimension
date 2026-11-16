@@ -57,8 +57,8 @@
     <Link>
       <AdditionalLibraryDirectories>$(MaxSdkLib);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>bmm.lib;core.lib;Geom.lib;gfx.lib;mesh.lib;maxutil.lib;maxscrpt.lib;manipsys.lib;paramblk2.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <ModuleDefinitionFile>CADDimension.def</ModuleDefinitionFile>
       <ProgramDatabaseFile>$(IntDir)CADDimension.pdb</ProgramDatabaseFile>
+      <AdditionalOptions>/OPT:NOICF %(AdditionalOptions)</AdditionalOptions>
       <LinkIncremental Condition="'$(Configuration)'=='Debug' or '$(Configuration)'=='Hybrid'">false</LinkIncremental>
     </Link>
   </ItemDefinitionGroup>

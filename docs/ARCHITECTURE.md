@@ -355,3 +355,4 @@ margin    = worldPerPixel * marginPx * NonScalingObjectSize
 - `CADLeader`：`HelperObject` 三段交互，箭头折线 + 附着文字。
 - `CADTable`：`TYPE_STRING_TAB` 单元格（`r*cols+c`），`SyncCells` 重建并保留重叠格。
 - 已知限制：无 `getColor`（颜色不能恢复）；MUI 语言目录/中文面板需人工验收。
+- 插件入口使用 `extern "C" __declspec(dllexport)` 并禁用 `/OPT:ICF`，确保 `LibInitialize/LibNumberClasses/LibShutdown` 导出名不被 COMDAT 折叠；`CADDimension.def` 保留为历史文件，不参与链接。
