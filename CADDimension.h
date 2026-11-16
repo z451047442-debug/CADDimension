@@ -24,11 +24,12 @@
 
 #include "3dsmaxsdk_preinclude.h"
 #include "resource.h"
+#include "Common/CADDraw.h"
+#include "Common/CADHit.h"
 #include <max.h>
 #include <istdplug.h>
 #include <iparamb2.h>
 #include <iparamm2.h>
-#include <GraphicsWindow.h>
 #include <type_traits>
 
 extern TCHAR* GetString(int id);
@@ -108,6 +109,9 @@ private:
     friend class CADDimTargetRestore;
     friend class CADDimCloneTargetPostPatch;
 
+    using ScreenSeg   = cad::ScreenSeg;
+    using ScreenLabel = cad::ScreenLabel;
+
     // Set while Clone's PostPatchProc rewrites the cloned pblock target.
     bool m_inClone = false;
     // Set while RestoreObj applies an undo/redo value.
@@ -124,15 +128,11 @@ private:
     void PushPendingTarget(INode* oldTarget, TimeValue t);
     bool PopPendingTarget(INode*& oldTarget, TimeValue& t);
 
-    struct ScreenSeg   { IPoint2 a, b; };
-    struct ScreenLabel { IPoint2 pos; MSTR text; };
-
     INode* GetTargetNode(TimeValue t) const;
     void   ApplyTargetNode(INode* node, TimeValue t);
     bool   IsInvalidTarget(INode* node, TimeValue t) const;
     bool   GetTargetBoxes(TimeValue t, Box3& localBox, Box3& worldBox, Matrix3& otm) const;
     bool   GetTargetDrawData(TimeValue t, Point3 worldCorners[8], Point3& localSize) const;
-    Point2 MapWorldToScreen(GraphicsWindow* gw, const Point3& world, bool& ok) const;
 
     // 生成屏幕空间的标注线段/文字（包围盒 12 条边 + 3 条尺寸线 + 辅助线/箭头）
     int BuildScreenPrimitives(TimeValue t, ViewExp* vpt,
@@ -140,13 +140,8 @@ private:
                               ScreenSeg* segs, int maxSegs,
                               ScreenLabel* labels, int maxLabels, int& nLabels) const;
 
-    void DrawScreenSeg(GraphicsWindow* gw, const ScreenSeg& seg) const;
-    void DrawScreenLabel(GraphicsWindow* gw, const ScreenLabel& label) const;
     void DrawNoTargetMarker(GraphicsWindow* gw, ViewExp* vpt, INode* inode, TimeValue t,
                             const MCHAR* text) const;
-    void SetupLineColor(GraphicsWindow* gw, INode* inode) const;
-
-    static bool HitSegments(const HitRegion& hr, const ScreenSeg* segs, int nSegs);
 };
 
 static_assert(std::is_base_of<GeomObject, CADDimension>::value,
