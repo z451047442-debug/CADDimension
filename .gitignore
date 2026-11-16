@@ -35,3 +35,6 @@ tests/TypeStringProbe/probe_plugin2.ini
 tests/TypeStringProbe/probe_plugin3.ini
 # release probe logs
 scripts/release_*.log
+# local release backups/packages
+backups/
+dist/
