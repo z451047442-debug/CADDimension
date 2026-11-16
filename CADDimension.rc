@@ -106,6 +106,30 @@ BEGIN
     LTEXT           "点位由三击或 MAXScript 设置",IDC_LEADER_INFO,7,70,145,8
 END
 
+IDD_CADTABLE_PANEL DIALOG DISCARDABLE  0, 0, 170, 125
+STYLE WS_CHILD | WS_VISIBLE
+FONT 9, "MS Shell Dlg"
+
+BEGIN
+    LTEXT           "行:",IDC_STATIC,7,10,30,8
+    CONTROL         "",IDC_TABLE_ROWS_EDIT,"CustEdit",WS_TABSTOP,45,8,35,10
+    CONTROL         "",IDC_TABLE_ROWS_SPIN,"SpinnerControl",0x0,82,8,7,10
+    LTEXT           "列:",IDC_STATIC,7,28,30,8
+    CONTROL         "",IDC_TABLE_COLS_EDIT,"CustEdit",WS_TABSTOP,45,26,35,10
+    CONTROL         "",IDC_TABLE_COLS_SPIN,"SpinnerControl",0x0,82,26,7,10
+    LTEXT           "格宽:",IDC_STATIC,7,46,30,8
+    CONTROL         "",IDC_TABLE_CW_EDIT,"CustEdit",WS_TABSTOP,45,44,35,10
+    CONTROL         "",IDC_TABLE_CW_SPIN,"SpinnerControl",0x0,82,44,7,10
+    LTEXT           "格高:",IDC_STATIC,7,64,30,8
+    CONTROL         "",IDC_TABLE_CH_EDIT,"CustEdit",WS_TABSTOP,45,62,35,10
+    CONTROL         "",IDC_TABLE_CH_SPIN,"SpinnerControl",0x0,82,62,7,10
+    LTEXT           "字号:",IDC_STATIC,7,82,30,8
+    CONTROL         "",IDC_TABLE_TS_EDIT,"CustEdit",WS_TABSTOP,45,80,35,10
+    CONTROL         "",IDC_TABLE_TS_SPIN,"SpinnerControl",0x0,82,80,7,10
+    LTEXT           "单元格文本用 MAXScript 设置",IDC_TABLE_INFO,7,104,150,8
+END
+
+
 
 
  //IMAGE_FILTER_COMPOSITOR_TYPE
@@ -173,6 +197,14 @@ BEGIN
     IDS_CADTEXT_PARAMS      "文字参数"
     IDS_CADLEADER_CLASS_NAME "CAD引线"
     IDS_CADLEADER_PARAMS    "引线参数"
+    IDS_CADTABLE_CLASS_NAME "CAD表格"
+    IDS_CADTABLE_PARAMS     "表格参数"
+    IDS_CADTABLE_CELLS      "单元格"
+    IDS_TABLE_ROWS          "行"
+    IDS_TABLE_COLS          "列"
+    IDS_TABLE_CELL_W        "格宽"
+    IDS_TABLE_CELL_H        "格高"
+    IDS_TABLE_TEXT_SIZE     "字号"
 
  //TEX_TYPE
 END

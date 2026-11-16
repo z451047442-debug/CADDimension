@@ -26,3 +26,6 @@ scripts/probe_cadtext*.log
 scripts/probe_cadleader*.log
 scripts/fixtures/cadtext.max
 scripts/fixtures/cadleader.max
+# M3 probe artifacts
+scripts/probe_cadtable*.log
+scripts/fixtures/cadtable.max

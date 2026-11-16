@@ -78,6 +78,7 @@
     <ClCompile Include="CADDimensionThreePoint.cpp" />
     <ClCompile Include="CADDimensionUI.cpp" />
     <ClCompile Include="CADLeader.cpp" />
+    <ClCompile Include="CADTable.cpp" />
     <ClCompile Include="CADText.cpp" />
     <ClCompile Include="Common\CADDraw.cpp" />
     <ClCompile Include="Common\CADHit.cpp" />
@@ -90,6 +91,7 @@
     <ClInclude Include="3dsmaxsdk_preinclude.h" />
     <ClInclude Include="CADDimension.h" />
     <ClInclude Include="CADLeader.h" />
+    <ClInclude Include="CADTable.h" />
     <ClInclude Include="CADText.h" />
     <ClInclude Include="Common\CADDraw.h" />
     <ClInclude Include="Common\CADHit.h" />
