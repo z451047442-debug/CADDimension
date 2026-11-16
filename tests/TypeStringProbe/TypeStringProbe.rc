@@ -1,0 +1,10 @@
+#include "resource.h"
+
+STRINGTABLE
+BEGIN
+    IDS_TSP_PARAMS  "TypeStringProbe Parameters"
+    IDS_TSP_ROWS    "Rows"
+    IDS_TSP_COLS    "Cols"
+    IDS_TSP_CELLS   "Cells"
+    IDS_TSP_CPP     "C++ Readback"
+END

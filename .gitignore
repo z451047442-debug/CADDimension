@@ -10,3 +10,26 @@ build.log
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Probe artifacts
+scripts/probe_b1*.log
+scripts/probe_b1_scene.max
+scripts/probe_b1_roundtrip.max
+scripts/make_legacy_b1*.log
+# M1b probe artifacts
+scripts/probe_dim_*.log
+scripts/fixtures/*.log
+scripts/fixtures/dim_three_point*.max
+scripts/fixtures/legacy_migrated.max
+# M2 probe artifacts
+scripts/probe_cadtext*.log
+scripts/probe_cadleader*.log
+scripts/fixtures/cadtext.max
+scripts/fixtures/cadleader.max
+# M3 probe artifacts
+scripts/probe_cadtable*.log
+scripts/fixtures/cadtable.max
+# local probe leftovers
+scripts/probe_b1_scene.backup.max
+tests/TypeStringProbe/probe_plugin2.ini
+tests/TypeStringProbe/probe_plugin3.ini

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Hybrid|x64">
+      <Configuration>Hybrid</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectName>TypeStringProbe</ProjectName>
+    <ProjectGuid>{3a7c9f21-5b64-4d0e-9a11-7c2d3e4f5a60}</ProjectGuid>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <MaxSDK Condition="'$(MaxSDK)' == ''">$(MAXSDK_DIR)</MaxSDK>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <Import Project="$(MaxSDK)\ProjectSettings\PropertySheets\3dsmax.general.project.settings.props"
+          Condition="'$(MaxSDK)' != '' and Exists('$(MaxSDK)\ProjectSettings\PropertySheets\3dsmax.general.project.settings.props')" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(MaxSDK)\ProjectSettings\PropertySheets\3dsmax.cpp.props"
+            Condition="'$(MaxSDK)' != '' and Exists('$(MaxSDK)\ProjectSettings\PropertySheets\3dsmax.cpp.props')" />
+  </ImportGroup>
+  <PropertyGroup>
+    <OutDir>$(ProjectDir)x64\$(Configuration)\Plugins\</OutDir>
+    <IntDir>$(ProjectDir)obj\$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>TypeStringProbe</TargetName>
+    <TargetExt>.dlo</TargetExt>
+    <MaxSdkLib>$(MaxSdkDir)lib\$(Platform)\Release\</MaxSdkLib>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
+      <PreprocessorDefinitions>_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(MaxSdkInc);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WarningLevel>Level4</WarningLevel>
+      <UndefinePreprocessorDefinitions Condition="'$(Configuration)'=='Debug'">_DEBUG;%(UndefinePreprocessorDefinitions)</UndefinePreprocessorDefinitions>
+      <UndefinePreprocessorDefinitions Condition="'$(Configuration)'=='Hybrid'">_HYBRID;IS_HYBRID;%(UndefinePreprocessorDefinitions)</UndefinePreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)'=='Debug'">NDEBUG;SECURE_SCL=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)'=='Hybrid'">NDEBUG;SECURE_SCL=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <BasicRuntimeChecks Condition="'$(Configuration)'=='Debug' or '$(Configuration)'=='Hybrid'">Default</BasicRuntimeChecks>
+      <RuntimeLibrary Condition="'$(Configuration)'=='Debug' or '$(Configuration)'=='Hybrid'">MultiThreadedDLL</RuntimeLibrary>
+      <AdditionalOptions Condition="'$(Configuration)'=='Debug' or '$(Configuration)'=='Hybrid'">/D_ITERATOR_DEBUG_LEVEL=0 %(AdditionalOptions)</AdditionalOptions>
+      <ProgramDataBaseFileName>$(IntDir)TypeStringProbe.pdb</ProgramDataBaseFileName>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(MaxSdkLib);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>bmm.lib;core.lib;Geom.lib;gfx.lib;mesh.lib;maxutil.lib;maxscrpt.lib;manipsys.lib;paramblk2.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ModuleDefinitionFile>TypeStringProbe.def</ModuleDefinitionFile>
+      <ProgramDatabaseFile>$(IntDir)TypeStringProbe.pdb</ProgramDatabaseFile>
+      <LinkIncremental Condition="'$(Configuration)'=='Debug' or '$(Configuration)'=='Hybrid'">false</LinkIncremental>
+    </Link>
+  </ItemDefinitionGroup>
+  <Target Name="ValidateMaxSdk" BeforeTargets="PrepareForBuild">
+    <Error Condition="'$(MaxSDK)' == ''"
+           Text="MAXSDK_DIR is not set. Set it to the 3ds Max SDK root (e.g. D:\3dsMaxSDK2027\maxsdk) or pass /p:MaxSDK=&lt;sdk-root&gt;." />
+    <Error Condition="'$(MaxSDK)' != '' and !Exists('$(MaxSDK)\ProjectSettings\PropertySheets\3dsmax.general.project.settings.props')"
+           Text="3ds Max SDK property sheets not found under '$(MaxSDK)'. Check MAXSDK_DIR / MaxSDK." />
+  </Target>
+  <ItemGroup>
+    <ClCompile Include="TypeStringProbe.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="TypeStringProbe.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="TypeStringProbe.def" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>
