@@ -38,3 +38,9 @@ scripts/release_*.log
 # local release backups/packages
 backups/
 dist/
+# P0 gate logs
+scripts/probe_all_summary.log
+scripts/gate_*.log
+scripts/make_b4d_fixture.log
+scripts/make_v1_fixture.log
+scripts/probe_compat_fixtures.log

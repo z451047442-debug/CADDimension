@@ -141,3 +141,39 @@
 旧场景 fixture：`scripts/fixtures/legacy_b1_nrefs2.max`，SHA256 `96fa6381ad376ceb62db4296a7c3c8ac39767bb386948d5dce90a13d18d7b441`。
 
 人工清单（step 11）：三击/单击创建与预览、视口线/箭头/文字、缩放 10%–1000% 像素恒定、中文面板/MUI、20×20 表格流畅度。
+
+## 发布门禁（1.0.0）
+
+```powershell
+powershell -File scriptsun_probe_all.ps1 -Config Release -AllowInfo
+```
+
+- `FAIL=0` 为硬门槛；`INFO` 必须在白名单内，并由 `-AllowInfo` 显式放行。
+- 当前 INFO 白名单：`probe_b1.ms` 的 G3（批处理 undo）、G5（视口重绘）、G7（旧场景加载已 PASS，INFO 保留说明）。
+- 探针结果、DLO/MUI SHA256 写入 `scripts/probe_all_summary.log`；脚本退出码 0=PASS、1=FAIL、2=INFO 未放行。
+
+### 兼容 fixture（已提交）
+
+| fixture | 来源 | SHA256 |
+|---|---|---|
+| `legacy_b1_nrefs2.max` | `eb91d0d`（NumRefs=2） | `96fa6381ad376ceb62db4296a7c3c8ac39767bb386948d5dce90a13d18d7b441` |
+| `b4d_bbox_nrefs1.max` | `25884bb`（NumRefs=1 包围盒） | `60ef9c305c8ad87fe1294a090fa9a04016f5dc961ba255d14189130d842d9b3a` |
+| `v1_0_0_three_point.max` | 1.0.0 三点 | `0c49d9778a48a6afd9c9ebc572418812eeb86a3f8b1535f2d3c5c6bc332f648e` |
+
+`probe_compat_fixtures.ms` 验证 B4d（mode=0、目标保留）与 1.0.0（mode=1、点位/showXYZ）加载。
+
+### 干净机冒烟（分发前，待执行）
+
+1. 干净 Windows 10/11 + 3ds Max 2027.x；仅安装发布包 `.dlo` + `en-US` MUI。
+2. 加载插件，创建四类；打开 B1/B4d/1.0.0 fixture；检查中文面板与 MUI。
+3. 卸载/重装、升级到下一版本、回退到 1.0.0 golden 文件。
+4. 记录 3ds Max 版本、Windows 版本、DLO/MUI SHA、截图/日志。
+
+### 中文 MUI 决策
+
+**首版不强制 `zh-CN` MUI**：以 `en-US` MUI + 内嵌 GBK 中文串交付。但**中文 3ds Max 实测必须显示中文**；若出现乱码/英文回退/面板不可用，阻断发布并补 `zh-CN` MUI（作为 1.0.0 修复或 1.0.1）。
+
+### 发布包
+
+- `dist/CADDimension-1.0.0.zip`（`.dlo` + `en-US` MUI + README/CHANGELOG + SHA256SUMS）
+- `x64/golden/1.0.0/` 成对保存。
