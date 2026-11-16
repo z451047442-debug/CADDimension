@@ -112,3 +112,23 @@
 
 - 3ds Max 2027 插件工程：`GeomObject` 派生对象、参数块、屏幕空间尺寸标注、
   包围盒、命中测试、资源与构建工程。
+
+## [Unreleased] - 2026-11-16
+
+### Added
+- 单 `.dlo` 四类：`CADDimension`（三点 + `showXYZ` + `p_mode`）、`CADText`、`CADLeader`、`CADTable`。
+- `Common/CADDraw`、`Common/CADHit` 共享绘制/命中层。
+- 旧 `NumRefs==2` 场景 post-load 迁移与兼容槽。
+- `tests/TypeStringProbe/` 探针工程；M0–M3 MAXScript 探针。
+
+### Changed
+- `CADDimension` 按职责拆分为 Core/Bounds/Clone/Create/Draw/Hit/ThreePoint/UI。
+- 点位坐标使用 `ParamMap2UserDlgProc` 的 9 个 spinner。
+
+### Verified
+- 三配置构建；Dimension 29、Text 7、Leader 11、Table 20、B1 16 探针 0 FAIL。
+
+### Known limitations
+- 交互/视口/面板/MUI 人工验收待 step 11。
+- `GraphicsWindow` 无 `getColor`，颜色不能恢复。
+- `CADTable` 屏幕对齐，不随对象旋转；首期单元格编辑仅 MAXScript。

@@ -344,3 +344,14 @@ margin    = worldPerPixel * marginPx * NonScalingObjectSize
 | 命中测试 | `CADDimension.cpp:1025-1114` |
 | 插件导出 | `DllEntry.cpp:41-87` |
 | 资源与字符串 | `CADDimension.rc:28-42`、`99-107` |
+
+## 实现补充（M0–M3）
+
+- `Common/CADDraw`：世界→屏幕、裁剪、屏幕线段/文字、颜色、`GWDrawGuard`。
+- `Common/CADHit`：点/矩形/圆命中。
+- `CADDimension` 拆分：Core / Bounds / Clone / Create / Draw / Hit / ThreePoint / UI，所有文件 ≤500 行。
+- 引用契约：pblock 为真源；引用槽 1 仅为旧版 `NumRefs==2` 兼容槽，`PostLoadCallback` 迁移后清空。
+- `CADText`：`SimpleObject2` + 空 `BuildMesh(TimeValue)` + 屏幕文字。
+- `CADLeader`：`HelperObject` 三段交互，箭头折线 + 附着文字。
+- `CADTable`：`TYPE_STRING_TAB` 单元格（`r*cols+c`），`SyncCells` 重建并保留重叠格。
+- 已知限制：无 `getColor`（颜色不能恢复）；MUI 语言目录/中文面板需人工验收。

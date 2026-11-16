@@ -76,6 +76,7 @@ public:
         if (dim->m_inClone || dim->m_suppressUndo || dim->m_inUndoRestore ||
             theHold.RestoreOrRedoing()) {
             dim->m_pendingCount = 0;
+            dim->m_pendingOverflow = false;
             return;
         }
 
@@ -110,6 +111,7 @@ public:
         if (dim->m_inClone || dim->m_suppressUndo || dim->m_inUndoRestore ||
             theHold.RestoreOrRedoing()) {
             dim->m_pendingCount = 0;
+            dim->m_pendingOverflow = false;
             return;
         }
 
@@ -360,7 +362,13 @@ RefResult CADDimension::NotifyRefChanged(const Interval& /*changeInt*/,
 
 void CADDimension::PushPendingTarget(INode* oldTarget, TimeValue t)
 {
-    if (m_pendingCount >= kMaxPendingTargets) m_pendingCount = 0;
+    if (m_pendingCount >= kMaxPendingTargets) {
+        // Fail safe: drop this record and skip undo capture for the next
+        // PostSet instead of resetting the stack and pairing the wrong value.
+        m_pendingCount = 0;
+        m_pendingOverflow = true;
+        return;
+    }
     m_pendingTargets[m_pendingCount].oldTarget = oldTarget;
     m_pendingTargets[m_pendingCount].t = t;
     ++m_pendingCount;
@@ -369,6 +377,10 @@ void CADDimension::PushPendingTarget(INode* oldTarget, TimeValue t)
 
 bool CADDimension::PopPendingTarget(INode*& oldTarget, TimeValue& t)
 {
+    if (m_pendingOverflow) {
+        m_pendingOverflow = false;
+        return false;
+    }
     if (m_pendingCount <= 0) return false;
     --m_pendingCount;
     oldTarget = m_pendingTargets[m_pendingCount].oldTarget;

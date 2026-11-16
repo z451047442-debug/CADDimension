@@ -1,9 +1,10 @@
 # CAD 注释工具集（四插件 Bundle）规划
 
-> **状态：设计/规划文档，尚未实现。**
-> 当前分支（`25884bb`）只注册 `CADDimension` 一个类，且实现是"绑定目标包围盒 +
-> X/Y/Z 标注"。本文描述的三点交互版本、`showXYZ` 以及 `CADText` / `CADLeader` /
-> `CADTable` 均为后续目标，**不代表现有代码已具备这些能力**。
+> **状态：已实现（M0–M3，2026-11-16）。**
+> 分支 `feature/annotation-suite` 已注册四个类：
+> `CADDimension`（三点 + `showXYZ` + `p_mode` 旧场景兼容）、`CADText`、
+> `CADLeader`、`CADTable`。实现与文件布局见 [ARCHITECTURE.md](ARCHITECTURE.md)，
+> 验证命令见 [TESTING.md](TESTING.md)。交互/视口/面板的人工验收仍待 step 11。
 > 类声明与 ClassDesc 注册代码见
 > [ANNOTATION_SUITE_CLASSES.md](ANNOTATION_SUITE_CLASSES.md)。
 
@@ -36,25 +37,20 @@
 | `CADLeader` | 三段：起点 → 折点 → 文字位置 | 箭头折线 + 附着文字 | `start`、`elbow`、`textPos`、`text`、`textSize`、`arrowSize` |
 | `CADTable` | 参数控制行数、列数、单元格文本 | 网格线 + 单元格文字 | `rows`、`cols`、`cellWidth`、`cellHeight`、`textSize`、单元格文本 |
 
-## 3. 现状与差距
+## 3. 实现状态（M0–M3）
 
-| 项目 | 当前状态（`25884bb`） | 本规划目标 |
-|------|------------------------|------------|
-| Bundle 类数 | 1 | 4 |
-| `CADDimension` 数据模型 | 目标节点包围盒 | 三点定义的线性尺寸 |
-| `CADDimension` 创建交互 | 有选择时首次点击绑定并放置；无选择时先拾取目标再放置 | 点击起点 → 终点 → 尺寸线位置 |
-| `showXYZ` | 无 | 布尔参数 + 复选框 |
-| `CADText` / `CADLeader` / `CADTable` | 无 | 三个新类 |
-| 通用非缩放绘制 | `CADDimension` 内部实现 | 抽取共享绘制助手 |
+| 项目 | 状态（2026-11-16） |
+|------|---------------------|
+| Bundle 类数 | 4（`LibNumberClasses()==4`） |
+| `CADDimension` | 三点标注 + `showXYZ` + `p_mode` 双模式；旧 `NumRefs==2` 场景 post-load 迁移 |
+| `CADText` | `SimpleObject2`，单击放置，屏幕文字 |
+| `CADLeader` | `HelperObject`，三段交互，箭头折线 + 文字 |
+| `CADTable` | `HelperObject`，`TYPE_STRING_TAB` 单元格，默认 20×20 |
+| 共享绘制/命中 | `Common/CADDraw`、`Common/CADHit` |
+| 自动化探针 | `scripts/probe_dim_three_point.ms`、`probe_cadtext.ms`、`probe_cadleader.ms`、`probe_cadtable.ms`、`scripts/probe_b1.ms` |
+| 待人工验收 | 三击/单击交互、视口视觉、中文面板/MUI、显示性能 |
 
-**重要差距**：当前仓库的所有分支、提交与 stash 中都没有"三点交互"实现。
-`git log --all` 仅包含包围盒版本，源码中也没有点 1/点 2 的存储。所谓"保留上一版
-三点交互"需要：
-
-1. 从仓库外的旧版本/备份中**移植**；或
-2. 按本文第 5 节**重新实现**。
-
-在移植或实现之前，不应在文档或代码中假设该能力已经存在。
+> 下文的“目标设计”仍作为实现对照保留；实际签名/参数以源码为准。
 
 ## 4. 总体架构
 

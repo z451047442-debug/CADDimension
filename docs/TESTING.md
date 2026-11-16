@@ -121,3 +121,23 @@
 - 拾取对话框与修改面板控件无法在批处理中自动点击。
 - 批处理环境的撤销能力取决于启动参数，部分撤销项只能交互式复测。
 - 探针不做像素级视觉比对；颜色、箭头形状、文字位置需人工检查。
+
+## M0–M3 自动化验证（2026-11-16）
+
+命令模板：
+
+```bat
+"D:\Program Filesds Max 2027ds Max 2027dsmaxbatch.exe" scripts\<probe>.ms -p scripts\probe_plugin.ini -dm on -log scripts\<probe>.log -v 4
+```
+
+| 探针 | Release | Debug | Hybrid |
+|---|---|---|---|
+| `probe_dim_three_point.ms` | 29 PASS | 29 PASS | 29 PASS |
+| `probe_cadtext.ms` | PASS | PASS | PASS |
+| `probe_cadleader.ms` | 11 PASS | 11 PASS | 11 PASS |
+| `probe_cadtable.ms` | 20 PASS | 20 PASS | 20 PASS |
+| `probe_b1.ms` | 16 PASS | — | — |
+
+旧场景 fixture：`scripts/fixtures/legacy_b1_nrefs2.max`，SHA256 `96fa6381ad376ceb62db4296a7c3c8ac39767bb386948d5dce90a13d18d7b441`。
+
+人工清单（step 11）：三击/单击创建与预览、视口线/箭头/文字、缩放 10%–1000% 像素恒定、中文面板/MUI、20×20 表格流畅度。

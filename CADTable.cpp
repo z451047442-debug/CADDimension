@@ -381,10 +381,9 @@ int CADTable::HitTest(TimeValue t, INode* inode, int type, int crossing,
     if (!ok) return 0;
 
     cad::ScreenSeg segs[kMaxSegs];
-    cad::ScreenLabel labels[kMaxLabels];
     int nLabels = 0;
     const int nSeg = BuildTablePrimitives(t, vpt, origin, segs, kMaxSegs,
-                                          labels, kMaxLabels, nLabels);
+                                          nullptr, 0, nLabels);
     if (nSeg <= 0) return 0;
     return cad::HitSegments(hr, segs, nSeg) ? 1 : 0;
 }

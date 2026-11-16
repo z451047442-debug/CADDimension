@@ -4,8 +4,10 @@
 > `CADText` / `CADLeader` / `CADTable` 的完整类声明草案，以及四类
 > `ClassDesc2` 的注册方式。
 >
-> **状态：设计草案，未编译、未接入工程。** 实现时以 3ds Max 2027 SDK 头文件的
-> 纯虚函数集为准；若 SDK 签名不同，以 SDK 为准调整。
+> **状态：已实现（M0–M3，2026-11-16）。** 类声明以实际源码为准；
+> 本文保留为设计对照。实现差异包括：`CADText` 使用 `SimpleObject2`、
+> `CADTable` 单元格使用 `TYPE_STRING_TAB`、`CADDimension` 点位 UI 使用
+> `ParamMap2UserDlgProc`。详见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 1. 公共约定
 

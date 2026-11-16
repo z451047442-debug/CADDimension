@@ -158,6 +158,7 @@ private:
     enum { kMaxPendingTargets = 4 };
     PendingTarget m_pendingTargets[kMaxPendingTargets] = {};
     int m_pendingCount = 0;
+    bool m_pendingOverflow = false;
     unsigned int m_pendingSeq = 0;
     void PushPendingTarget(INode* oldTarget, TimeValue t);
     bool PopPendingTarget(INode*& oldTarget, TimeValue& t);

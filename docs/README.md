@@ -81,3 +81,10 @@ CADDimension/
   像素尺寸绘制，线宽/字号不随视口缩放变化。
 - **可撤销绑定**：`targetNode` 的属性赋值由 `PBAccessor::PreSet/PostSet` 捕获并
   生成 `RestoreObj`，MAXScript、修改面板与撤销/重做保持一致。
+
+## 当前实现状态（2026-11-16）
+
+- 单 DLL 注册 4 类：`CADDimension`、`CADText`、`CADLeader`、`CADTable`。
+- 三配置构建：`Release` / `Debug` / `Hybrid`，输出 `x64/<Config>/Plugins/CADDimension.dlo` 与 `en-US/CADDimension.dlo.mui`。
+- 自动化探针全部通过：Dimension 29、Text 7、Leader 11、Table 20、B1 16（0 FAIL）。
+- 已确认限制：三击/单击交互、视口视觉、中文面板/MUI、20×20 性能仍需人工验收；`GraphicsWindow` 无 `getColor`，颜色按对象重设。
