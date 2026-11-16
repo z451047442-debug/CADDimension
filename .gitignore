@@ -44,3 +44,4 @@ scripts/gate_*.log
 scripts/make_b4d_fixture.log
 scripts/make_v1_fixture.log
 scripts/probe_compat_fixtures.log
+scripts/smoke_release_result.log
