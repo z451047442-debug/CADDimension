@@ -234,10 +234,23 @@ cd.targetNode = cd
 cd2 = copy cd
 ```
 
-## 9. 提交前评审清单
+## 9. 发布包冒烟
+
+发布包根目录的 `smoke_release.ms` 用于验证解压后的 DLO/MUI 能否被 3ds Max 加载并实例化四类：
+
+```bat
+"D:/Program Files/3ds Max 2027/3ds Max 2027/3dsmaxbatch.exe" ^
+  <包目录>\smoke_release.ms -p <包目录>\smoke_plugin.ini ^
+  -dm on -log <包目录>\smoke.log -v 4
+```
+
+`smoke_plugin.ini` 为 UTF-16 LE，`Additional MAX plug-ins` 指向包目录且末尾仅一个反斜杠。结果写在脚本同目录的 `smoke_release_result.log`；通过标记为 `[SMOKE][PASS]`，失败为 `[SMOKE][FAIL]`。脚本内部捕获异常时 batch 退出码可能仍为 0，判定必须以结果文件为准。完整说明见 [TESTING.md](TESTING.md)。
+
+## 10. 提交前评审清单
 
 - [ ] Debug / Hybrid / Release 三配置均可构建。
 - [ ] `scripts\probe_b1.ms` 全部 PASS，且输出 `[PROBE][DONE]`。
+- [ ] `scripts/smoke_release.ms` 对最终发布包解压目录 PASS。
 - [ ] 没有新增引用槽；若新增节点参数，克隆 PostPatch 已覆盖。
 - [ ] 新增状态变更具备撤销/重做，且创建/克隆/回放路径已抑制。
 - [ ] `GraphicsWindow` 状态在正常与失败路径都能恢复。

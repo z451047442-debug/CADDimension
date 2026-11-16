@@ -127,7 +127,7 @@
 命令模板：
 
 ```bat
-"D:\Program Filesds Max 2027ds Max 2027dsmaxbatch.exe" scripts\<probe>.ms -p scripts\probe_plugin.ini -dm on -log scripts\<probe>.log -v 4
+"D:/Program Files/3ds Max 2027/3ds Max 2027/3dsmaxbatch.exe" scripts\<probe>.ms -p scripts\probe_plugin.ini -dm on -log scripts\<probe>.log -v 4
 ```
 
 | 探针 | Release | Debug | Hybrid |
@@ -145,7 +145,7 @@
 ## 发布门禁（1.0.0）
 
 ```powershell
-powershell -File scriptsun_probe_all.ps1 -Config Release -AllowInfo
+powershell -File scripts/run_probe_all.ps1 -Config Release -AllowInfo
 ```
 
 - `FAIL=0` 为硬门槛；`INFO` 必须在白名单内，并由 `-AllowInfo` 显式放行。
@@ -162,10 +162,38 @@ powershell -File scriptsun_probe_all.ps1 -Config Release -AllowInfo
 
 `probe_compat_fixtures.ms` 验证 B4d（mode=0、目标保留）与 1.0.0（mode=1、点位/showXYZ）加载。
 
+### 发布包冒烟（2026-11-17 已验证）
+
+发布包根目录自带 `smoke_release.ms`。它从解压目录加载 DLO，实例化四个类，并把结果写到脚本同目录的 `smoke_release_result.log`。
+
+```bat
+"D:/Program Files/3ds Max 2027/3ds Max 2027/3dsmaxbatch.exe" ^
+  <包目录>\smoke_release.ms -p <包目录>\smoke_plugin.ini ^
+  -dm on -log <包目录>\smoke.log -v 4
+```
+
+`smoke_plugin.ini` 必须为 UTF-16 LE，且 `Additional MAX plug-ins` 路径末尾只有一个反斜杠：
+
+```ini
+[Directories]
+Additional MAX plug-ins=<包目录>\
+[Help]
+```
+
+通过标准：结果文件包含
+
+```text
+[SMOKE][PASS] CADDimension,CADText,CADLeader,CADTable
+```
+
+`[SMOKE][FAIL]` 即失败。不要只看 batch 退出码：脚本内部 `catch` 后 batch 仍可能返回 0。
+
+当前最终包 `dist/CADDimension-1.0.0.zip` 已通过该项（解压后运行），SHA256 `a61bd29c0139d0b44990c056d386ee77753c4d7c866955a6c4bde2de4f97e91a`。**该结果只证明同机解压包可用，不等于干净机冒烟。**
+
 ### 干净机冒烟（分发前，待执行）
 
 1. 干净 Windows 10/11 + 3ds Max 2027.x；仅安装发布包 `.dlo` + `en-US` MUI。
-2. 加载插件，创建四类；打开 B1/B4d/1.0.0 fixture；检查中文面板与 MUI。
+2. 先运行包内 `smoke_release.ms` 做类加载冒烟；再加载插件，创建四类；打开 B1/B4d/1.0.0 fixture；检查中文面板与 MUI。
 3. 卸载/重装、升级到下一版本、回退到 1.0.0 golden 文件。
 4. 记录 3ds Max 版本、Windows 版本、DLO/MUI SHA、截图/日志。
 
@@ -173,7 +201,10 @@ powershell -File scriptsun_probe_all.ps1 -Config Release -AllowInfo
 
 **首版不强制 `zh-CN` MUI**：以 `en-US` MUI + 内嵌 GBK 中文串交付。但**中文 3ds Max 实测必须显示中文**；若出现乱码/英文回退/面板不可用，阻断发布并补 `zh-CN` MUI（作为 1.0.0 修复或 1.0.1）。
 
+**当前状态（2026-11-17）：** 批处理已确认四个类可从发布包加载；中文面板与 MUI 的目视检查**仍未完成**，该项继续作为发布门禁，不标记闭环。
+
 ### 发布包
 
-- `dist/CADDimension-1.0.0.zip`（`.dlo` + `en-US` MUI + README/CHANGELOG + SHA256SUMS）
+- `dist/CADDimension-1.0.0.zip`（`.dlo` + `en-US` MUI + README/CHANGELOG + `smoke_release.ms` + SHA256SUMS），当前 SHA256 `a61bd29c0139d0b44990c056d386ee77753c4d7c866955a6c4bde2de4f97e91a`。
+- 旧包备份：`backups/CADDimension-1.0.0.pre-smoke-20261117.zip`，SHA256 `32f084886ec80c67fec480b3f8f3b8d800c5167b2042addaf1248bd6729e5316`。
 - `x64/golden/1.0.0/` 成对保存。
