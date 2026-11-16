@@ -78,6 +78,34 @@ BEGIN
     CONTROL         "",IDC_GAP_SPIN,"SpinnerControl",0x0,82,160,7,10
     LTEXT           "点位为对象局部坐标",IDC_STATIC,7,180,110,8
 END
+IDD_CADTEXT_PANEL DIALOG DISCARDABLE  0, 0, 140, 60
+STYLE WS_CHILD | WS_VISIBLE
+FONT 9, "MS Shell Dlg"
+
+BEGIN
+    LTEXT           "文字:",IDC_STATIC,7,10,30,8
+    CONTROL         "",IDC_TEXT_CONTENT_EDIT,"CustEdit",WS_TABSTOP,39,8,94,12
+    LTEXT           "字号:",IDC_STATIC,7,32,30,8
+    CONTROL         "",IDC_CTEXT_SIZE_EDIT,"CustEdit",WS_TABSTOP,45,30,35,10
+    CONTROL         "",IDC_CTEXT_SIZE_SPIN,"SpinnerControl",0x0,82,30,7,10
+END
+
+IDD_CADLEADER_PANEL DIALOG DISCARDABLE  0, 0, 160, 90
+STYLE WS_CHILD | WS_VISIBLE
+FONT 9, "MS Shell Dlg"
+
+BEGIN
+    LTEXT           "文字:",IDC_STATIC,7,10,30,8
+    CONTROL         "",IDC_LEADER_TEXT_EDIT,"CustEdit",WS_TABSTOP,39,8,110,12
+    LTEXT           "字号:",IDC_STATIC,7,32,30,8
+    CONTROL         "",IDC_LEADER_SIZE_EDIT,"CustEdit",WS_TABSTOP,45,30,35,10
+    CONTROL         "",IDC_LEADER_SIZE_SPIN,"SpinnerControl",0x0,82,30,7,10
+    LTEXT           "箭头:",IDC_STATIC,7,50,30,8
+    CONTROL         "",IDC_LEADER_ARROW_EDIT,"CustEdit",WS_TABSTOP,45,48,35,10
+    CONTROL         "",IDC_LEADER_ARROW_SPIN,"SpinnerControl",0x0,82,48,7,10
+    LTEXT           "点位由三击或 MAXScript 设置",IDC_LEADER_INFO,7,70,145,8
+END
+
 
 
  //IMAGE_FILTER_COMPOSITOR_TYPE
@@ -141,6 +169,11 @@ BEGIN
     IDS_CLASS_NAME          "CADDimension"
     IDS_PARAMS              "参数"
     IDS_SPIN                "Spin"
+    IDS_CADTEXT_CLASS_NAME  "CAD文字"
+    IDS_CADTEXT_PARAMS      "文字参数"
+    IDS_CADLEADER_CLASS_NAME "CAD引线"
+    IDS_CADLEADER_PARAMS    "引线参数"
+
  //TEX_TYPE
 END
 

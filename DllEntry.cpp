@@ -13,6 +13,8 @@
 #include "CADDimension.h"
 
 extern ClassDesc2* GetCADDimensionDesc();
+extern ClassDesc2* GetCADTextDesc();
+extern ClassDesc2* GetCADLeaderDesc();
 
 HINSTANCE hInstance;
 int controlsInit = FALSE;
@@ -47,7 +49,7 @@ __declspec( dllexport ) const TCHAR* LibDescription()
 //TODO: Must change this number when adding a new class
 __declspec( dllexport ) int LibNumberClasses()
 {
-	return 1;
+	return 3;
 }
 
 // This function returns the number of plug-in classes this DLL
@@ -56,6 +58,8 @@ __declspec( dllexport ) ClassDesc* LibClassDesc(int i)
 	switch(i)
 	{
 		case 0: return GetCADDimensionDesc();
+		case 1: return GetCADTextDesc();
+		case 2: return GetCADLeaderDesc();
 		default: return 0;
 	}
 }

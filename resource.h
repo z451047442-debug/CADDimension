@@ -9,6 +9,10 @@
 #define IDS_CLASS_NAME                  3
 #define IDS_PARAMS                      4
 #define IDS_SPIN                        5
+#define IDS_CADTEXT_CLASS_NAME          6
+#define IDS_CADTEXT_PARAMS              7
+#define IDS_CADLEADER_CLASS_NAME        8
+#define IDS_CADLEADER_PARAMS            9
 
 
 
@@ -17,6 +21,8 @@
 
 
 #define IDD_PANEL                       101
+#define IDD_CADTEXT_PANEL               102
+#define IDD_CADLEADER_PANEL             103
 
 #define IDC_CLOSEBUTTON                 1000
 #define IDC_DOSTUFF                     1000
@@ -49,6 +55,15 @@
 #define IDC_PD_Y_SPIN                   1027
 #define IDC_PD_Z_EDIT                   1028
 #define IDC_PD_Z_SPIN                   1029
+#define IDC_TEXT_CONTENT_EDIT           1100
+#define IDC_CTEXT_SIZE_EDIT             1101
+#define IDC_CTEXT_SIZE_SPIN             1102
+#define IDC_LEADER_TEXT_EDIT            1110
+#define IDC_LEADER_SIZE_EDIT            1111
+#define IDC_LEADER_SIZE_SPIN            1112
+#define IDC_LEADER_ARROW_EDIT           1113
+#define IDC_LEADER_ARROW_SPIN           1114
+#define IDC_LEADER_INFO                 1115
 #define IDC_COLOR                       1456
 #define IDC_EDIT                        1490
 #define IDC_SPIN                        1496
@@ -59,7 +74,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        101
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1030
+#define _APS_NEXT_CONTROL_VALUE         1116
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

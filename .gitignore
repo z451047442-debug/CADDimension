@@ -21,3 +21,8 @@ scripts/probe_dim_*.log
 scripts/fixtures/*.log
 scripts/fixtures/dim_three_point*.max
 scripts/fixtures/legacy_migrated.max
+# M2 probe artifacts
+scripts/probe_cadtext*.log
+scripts/probe_cadleader*.log
+scripts/fixtures/cadtext.max
+scripts/fixtures/cadleader.max
