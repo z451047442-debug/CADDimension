@@ -9,46 +9,70 @@ int CADDimension::Display(TimeValue t, INode* inode, ViewExp* vpt, int /*flags*/
     GraphicsWindow* gw = vpt->getGW();
     if (!gw) return 0;
 
-    const Matrix3 oldTM = gw->getTransform();
-    const DWORD   oldLimits = gw->getRndLimits();
+    cad::GWDrawGuard guard(gw);
     gw->setTransform(Matrix3()); // 世界坐标按单位变换进入 wTransPoint
-    gw->setRndLimits((oldLimits | GW_WIREFRAME) & ~GW_ILLUM);
+    gw->setRndLimits((gw->getRndLimits() | GW_WIREFRAME) & ~GW_ILLUM);
     cad::SetupObjectColor(gw, inode);
 
     float textPt = 12.0f;
+    int   mode = 0;
     if (pblock) {
         Interval v;
         v.SetInfinite();
         pblock->GetValue(p_text_size, t, textPt, v);
+        pblock->GetValue(p_mode, t, mode, v);
     }
 
-    // NonScalingObjectSize 只作为用户偏好系数：屏幕空间绘制本身已经
-    // 保证线宽/字号不随视口缩放变化。TapeHelp 的经典世界空间公式为
-    // worldSize = NonScalingObjectSize()*GetVPWorldWidth()/360。
     const float ns = cad::NonScalingFactor(vpt);
-    const float oldTextPt = gw->GetTextPointSize();
     gw->SetTextPointSize(cad::ClampF(textPt * ns, 6.0f, 40.0f));
 
-    Point3 worldCorners[8];
-    Point3 localSize;
-    if (GetTargetDrawData(t, worldCorners, localSize)) {
-        ScreenSeg   segs[48];
-        ScreenLabel labels[4];
-        int nLabels = 0;
-        const int nSeg = BuildScreenPrimitives(t, vpt, worldCorners, localSize,
-                                               segs, 48, labels, 4, nLabels);
-        for (int i = 0; i < nSeg; ++i)  cad::DrawScreenSeg(gw, segs[i]);
-        for (int i = 0; i < nLabels; ++i) cad::DrawScreenLabel(gw, labels[i]);
-    } else {
-        INode* target = GetTargetNode(t);
-        DrawNoTargetMarker(gw, vpt, inode, t,
-            target ? _T("CADDimension: unsupported target") : _T("CADDimension: no target"));
+    int drawn = 0;
+
+    if (mode == 1) {
+        DimGeom g;
+        if (GetDimWorldPoints(t, inode, g)) {
+            ScreenSeg   segs[32];
+            ScreenLabel labels[4];
+            int nLabels = 0;
+            const int nSeg = BuildDimPrimitives(t, vpt, g, segs, 32, labels, 4, nLabels);
+            for (int i = 0; i < nSeg; ++i) {
+                cad::DrawScreenSeg(gw, segs[i]);
+                ++drawn;
+            }
+            for (int i = 0; i < nLabels; ++i) {
+                cad::DrawScreenLabel(gw, labels[i]);
+                ++drawn;
+            }
+        }
+        if (drawn == 0 && !m_creating)
+            drawn = DrawNoTargetMarker(gw, vpt, inode, t, _T("CADDimension: invalid points"));
+    }
+    else {
+        Point3 worldCorners[8];
+        Point3 localSize;
+        if (GetTargetDrawData(t, worldCorners, localSize)) {
+            ScreenSeg   segs[48];
+            ScreenLabel labels[4];
+            int nLabels = 0;
+            const int nSeg = BuildScreenPrimitives(t, vpt, worldCorners, localSize,
+                                                   segs, 48, labels, 4, nLabels);
+            for (int i = 0; i < nSeg; ++i) {
+                cad::DrawScreenSeg(gw, segs[i]);
+                ++drawn;
+            }
+            for (int i = 0; i < nLabels; ++i) {
+                cad::DrawScreenLabel(gw, labels[i]);
+                ++drawn;
+            }
+        }
+        else {
+            INode* target = GetTargetNode(t);
+            drawn = DrawNoTargetMarker(gw, vpt, inode, t,
+                target ? _T("CADDimension: unsupported target") : _T("CADDimension: no target"));
+        }
     }
 
-    gw->SetTextPointSize(oldTextPt);
-    gw->setRndLimits(oldLimits);
-    gw->setTransform(oldTM);
-    return 0;
+    return drawn > 0 ? 1 : 0;
 }
 
 //--------------------------------------------------------------------------
@@ -186,15 +210,15 @@ int CADDimension::BuildScreenPrimitives(TimeValue t, ViewExp* vpt,
 //--------------------------------------------------------------------------
 
 
-void CADDimension::DrawNoTargetMarker(GraphicsWindow* gw, ViewExp* vpt,
-                                      INode* inode, TimeValue t, const MCHAR* text) const
+int CADDimension::DrawNoTargetMarker(GraphicsWindow* gw, ViewExp* vpt,
+                                     INode* inode, TimeValue t, const MCHAR* text) const
 {
-    if (!inode) return;
+    if (!inode) return 0;
 
     bool ok = false;
     Point2 c;
     cad::MapWorldToScreen(gw, inode->GetObjectTM(t).GetTrans(), c, ok);
-    if (!ok) return;
+    if (!ok) return 0;
 
     const float ns = cad::NonScalingFactor(vpt);
     const float r = 8.0f * ns;
@@ -211,4 +235,5 @@ void CADDimension::DrawNoTargetMarker(GraphicsWindow* gw, ViewExp* vpt,
     lab.pos = IPoint2(cad::RoundI(c.x), cad::RoundI(c.y + r + 16.0f * ns));
     lab.text = text ? text : _T("CADDimension: no target");
     cad::DrawScreenLabel(gw, lab);
+    return 1;
 }

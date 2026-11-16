@@ -40,12 +40,17 @@ extern HINSTANCE hInstance;
 
 // 参数块 ID / 参数 ID / 引用槽
 enum CADDimBlockIDs { caddim_params = 0 };
-enum CADDimParamIDs { p_target = 0, p_text_size, p_dim_offset };
-enum CADDimRefSlots { kPBlockRef = 0 };
+enum CADDimParamIDs {
+    p_target = 0, p_text_size, p_dim_offset,
+    p_point1, p_point2, p_dimpoint,
+    p_arrow_size, p_extension_gap, p_show_xyz, p_mode
+};
+enum CADDimRefSlots { kPBlockRef = 0, kLegacyTargetRef = 1 };
 
 class CADDimensionPBAccessor;
 class CADDimTargetRestore;
 class CADDimCloneTargetPostPatch;
+class CADDimPostLoadMigration;
 
 class CADDimension : public GeomObject
 {
@@ -53,11 +58,11 @@ public:
     IParamBlock2* pblock = nullptr;     // 引用槽 0：参数块（唯一引用源）
     Interval      ivalid;
 
-    CADDimension();
+    explicit CADDimension(bool loading = false);
     ~CADDimension() override;
 
     // 普通初始化函数（不是 Object 的虚函数）
-    void Create();
+    void Create(bool loading);
 
     // From Animatable
     Class_ID    ClassID() override { return CADDIMENSION_CLASS_ID; }
@@ -71,11 +76,17 @@ public:
     RefTargetHandle Clone(RemapDir& remap) override;
     RefResult NotifyRefChanged(const Interval& changeInt, RefTargetHandle hTarget,
                                PartID& partID, RefMessage message, BOOL propagate) override;
-    int NumRefs() override { return 1; }
+    IOResult Load(ILoad* iload) override;
+    int NumRefs() override { return 2; }
     RefTargetHandle GetReference(int i) override;
     void SetReference(int i, RefTargetHandle rtarg) override;
-    int NumSubs() override { return 1; }
-    Animatable* SubAnim(int i) override { return i == 0 ? pblock : nullptr; }
+    int NumSubs() override { return 2; }
+    Animatable* SubAnim(int i) override
+    {
+        if (i == kPBlockRef) return pblock;
+        if (i == kLegacyTargetRef) return m_legacyTarget;
+        return nullptr;
+    }
     MSTR SubAnimName(int i, bool localized) override;
     int NumParamBlocks() override { return 1; }
     IParamBlock2* GetParamBlock(int i) override { return i == 0 ? pblock : nullptr; }
@@ -108,9 +119,32 @@ private:
     friend class CADDimensionPBAccessor;
     friend class CADDimTargetRestore;
     friend class CADDimCloneTargetPostPatch;
+    friend class CADDimPostLoadMigration;
+    friend class CADDimensionCreateCallBack;
 
     using ScreenSeg   = cad::ScreenSeg;
     using ScreenLabel = cad::ScreenLabel;
+
+    struct DimGeom
+    {
+        Point3 p1, p2, p3;       // world points
+        Point3 u, n, w;          // measurement direction / plane normal / text offset
+        Point3 a, b;             // projected points on the dimension line
+        float  dist = 0.0f;
+        bool   valid = false;
+    };
+
+    // 旧版 B1 目标节点兼容槽（引用槽 1）。迁移后清空。
+    INode* m_legacyTarget = nullptr;
+    bool   m_legacyMigrated = false;
+    bool   m_migrating = false;
+
+    // 创建期预览状态（不写 pblock，不产生撤销项）。
+    bool   m_creating = false;
+    bool   m_createHasP2 = false;
+    Point3 m_createOrigin = Point3(0, 0, 0);
+    Point3 m_createP2 = Point3(0, 0, 0);
+    Point3 m_createP3 = Point3(0, 0, 0);
 
     // Set while Clone's PostPatchProc rewrites the cloned pblock target.
     bool m_inClone = false;
@@ -134,14 +168,34 @@ private:
     bool   GetTargetBoxes(TimeValue t, Box3& localBox, Box3& worldBox, Matrix3& otm) const;
     bool   GetTargetDrawData(TimeValue t, Point3 worldCorners[8], Point3& localSize) const;
 
+    // 旧场景兼容：post-load 回调与 BeginEditParams 调用；禁止在 Display/Eval 内迁移。
+    void MigrateLegacyTarget(TimeValue t);
+    bool IsGeometryParam(ParamID id) const;
+
+    // 三点标注几何
+    bool GetDimensionPoints(TimeValue t, Point3& p1, Point3& p2, Point3& p3) const;
+    bool ComputeDimGeom(const Point3& p1, const Point3& p2, const Point3& p3, DimGeom& g) const;
+    bool GetDimWorldPoints(TimeValue t, INode* inode, DimGeom& g) const;
+    bool GetDimBounds(TimeValue t, INode* inode, Box3& worldBox) const;
+    int  BuildDimPrimitives(TimeValue t, ViewExp* vpt, const DimGeom& g,
+                            ScreenSeg* segs, int maxSegs,
+                            ScreenLabel* labels, int maxLabels, int& nLabels) const;
+
+    // 创建期状态（由 CADDimensionCreateCallBack 调用）
+    void SetCreateOrigin(const Point3& world);
+    void SetCreateSecond(const Point3& localP2);
+    void SetCreatePreview(const Point3& localP3);
+    void CommitCreate(const Point3& worldOrigin, const Point3& localP2, const Point3& localP3);
+    void CancelCreate();
+
     // 生成屏幕空间的标注线段/文字（包围盒 12 条边 + 3 条尺寸线 + 辅助线/箭头）
     int BuildScreenPrimitives(TimeValue t, ViewExp* vpt,
                               const Point3 worldCorners[8], const Point3& localSize,
                               ScreenSeg* segs, int maxSegs,
                               ScreenLabel* labels, int maxLabels, int& nLabels) const;
 
-    void DrawNoTargetMarker(GraphicsWindow* gw, ViewExp* vpt, INode* inode, TimeValue t,
-                            const MCHAR* text) const;
+    int DrawNoTargetMarker(GraphicsWindow* gw, ViewExp* vpt, INode* inode, TimeValue t,
+                           const MCHAR* text) const;
 };
 
 static_assert(std::is_base_of<GeomObject, CADDimension>::value,

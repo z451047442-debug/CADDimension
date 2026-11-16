@@ -18,23 +18,44 @@ int CADDimension::HitTest(TimeValue t, INode* inode, int type, int crossing,
     MakeHitRegion(hr, type, crossing,
                   static_cast<int>(cad::ClampF(5.0f * ns, 2.0f, 12.0f)), p);
 
-    const Matrix3 oldTM = gw->getTransform();
+    cad::GWDrawGuard guard(gw);
     gw->setTransform(Matrix3()); // 单位矩阵：wTransPoint 按世界坐标解释
 
+    int mode = 0;
+    if (pblock) {
+        Interval iv;
+        iv.SetInfinite();
+        pblock->GetValue(p_mode, t, mode, iv);
+    }
+
     bool hit = false;
-    Point3 worldCorners[8];
-    Point3 localSize;
-    if (GetTargetDrawData(t, worldCorners, localSize)) {
-        ScreenSeg   segs[48];
-        ScreenLabel labels[4];
-        int nLabels = 0;
-        const int nSeg = BuildScreenPrimitives(t, vpt, worldCorners, localSize,
-                                               segs, 48, labels, 4, nLabels);
-        hit = cad::HitSegments(hr, segs, nSeg);
-    } else {
+    if (mode == 1) {
+        DimGeom g;
+        if (GetDimWorldPoints(t, inode, g)) {
+            ScreenSeg   segs[32];
+            ScreenLabel labels[4];
+            int nLabels = 0;
+            const int nSeg = BuildDimPrimitives(t, vpt, g, segs, 32, labels, 4, nLabels);
+            hit = cad::HitSegments(hr, segs, nSeg);
+        }
+    }
+    else {
+        Point3 worldCorners[8];
+        Point3 localSize;
+        if (GetTargetDrawData(t, worldCorners, localSize)) {
+            ScreenSeg   segs[48];
+            ScreenLabel labels[4];
+            int nLabels = 0;
+            const int nSeg = BuildScreenPrimitives(t, vpt, worldCorners, localSize,
+                                                   segs, 48, labels, 4, nLabels);
+            hit = cad::HitSegments(hr, segs, nSeg);
+        }
+    }
+
+    if (!hit && mode == 0) {
         bool ok = false;
         Point2 c;
-    cad::MapWorldToScreen(gw, inode->GetObjectTM(t).GetTrans(), c, ok);
+        cad::MapWorldToScreen(gw, inode->GetObjectTM(t).GetTrans(), c, ok);
         if (ok) {
             const float r = 8.0f * ns;
             ScreenSeg cross[2];
@@ -46,10 +67,6 @@ int CADDimension::HitTest(TimeValue t, INode* inode, int type, int crossing,
         }
     }
 
-    gw->setTransform(oldTM);
     return hit ? 1 : 0;
 }
 
-//--------------------------------------------------------------------------
-// 命中测试：已迁移到 Common/CADHit.h
-//--------------------------------------------------------------------------

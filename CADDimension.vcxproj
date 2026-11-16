@@ -71,9 +71,12 @@
   <ItemGroup>
     <ClCompile Include="CADDimension.cpp" />
     <ClCompile Include="CADDimensionBounds.cpp" />
+    <ClCompile Include="CADDimensionClone.cpp" />
     <ClCompile Include="CADDimensionCreate.cpp" />
     <ClCompile Include="CADDimensionDraw.cpp" />
     <ClCompile Include="CADDimensionHit.cpp" />
+    <ClCompile Include="CADDimensionThreePoint.cpp" />
+    <ClCompile Include="CADDimensionUI.cpp" />
     <ClCompile Include="Common\CADDraw.cpp" />
     <ClCompile Include="Common\CADHit.cpp" />
     <ClCompile Include="DllEntry.cpp" />

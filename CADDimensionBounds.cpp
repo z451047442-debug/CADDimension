@@ -1,5 +1,19 @@
 #include "CADDimension.h"
 
+namespace
+{
+    int DimensionMode(IParamBlock2* pblock, TimeValue t)
+    {
+        int mode = 0;
+        if (pblock) {
+            Interval iv;
+            iv.SetInfinite();
+            pblock->GetValue(p_mode, t, mode, iv);
+        }
+        return mode;
+    }
+}
+
 //--------------------------------------------------------------------------
 // 包围盒
 //--------------------------------------------------------------------------
@@ -64,6 +78,18 @@ bool CADDimension::GetTargetDrawData(TimeValue t, Point3 worldCorners[8], Point3
 
 bool CADDimension::BoundingBox(TimeValue t, Box3& box) const
 {
+    if (DimensionMode(pblock, t) == 1) {
+        Point3 p1, p2, p3;
+        if (!GetDimensionPoints(t, p1, p2, p3)) return false;
+        box.Init();
+        box.IncludePoints(&p1, 1);
+        box.IncludePoints(&p2, 1);
+        box.IncludePoints(&p3, 1);
+        const Point3 size = box.pmax - box.pmin;
+        box.EnlargeBy(Length(size) * 0.1f + 1.0f);
+        return true;
+    }
+
     // 现代 SDK 没有 Object::BoundingBox() 虚函数；保留此辅助函数，
     // 供 Display/HitTest/GetWorldBoundBox 复用同一套包围盒逻辑。
     Box3 localBox, worldBox;
@@ -76,6 +102,14 @@ bool CADDimension::BoundingBox(TimeValue t, Box3& box) const
 
 void CADDimension::GetWorldBoundBox(TimeValue t, INode* inode, ViewExp* vp, Box3& box)
 {
+    if (DimensionMode(pblock, t) == 1) {
+        Box3 wb;
+        if (GetDimBounds(t, inode, wb)) {
+            box = wb;
+            return;
+        }
+    }
+
     Box3 localBox, wb;
     Matrix3 otm;
     if (GetTargetBoxes(t, localBox, wb, otm)) {
@@ -123,6 +157,21 @@ void CADDimension::GetWorldBoundBox(TimeValue t, INode* inode, ViewExp* vp, Box3
 
 void CADDimension::GetLocalBoundBox(TimeValue t, INode* inode, ViewExp* /*vp*/, Box3& box)
 {
+    if (DimensionMode(pblock, t) == 1) {
+        Box3 wb;
+        if (inode && GetDimBounds(t, inode, wb)) {
+            Point3 corners[8];
+            cad::BoxCorners(wb, corners);
+            Matrix3 inv = Inverse(inode->GetObjectTM(t));
+            box.Init();
+            box.IncludePoints(corners, 8, &inv);
+            return;
+        }
+        box.pmin = Point3(-1, -1, -1);
+        box.pmax = Point3(1, 1, 1);
+        return;
+    }
+
     Box3 localBox, wb;
     Matrix3 otm;
     if (!inode || !GetTargetBoxes(t, localBox, wb, otm) || wb.IsEmpty()) {
@@ -140,6 +189,22 @@ void CADDimension::GetLocalBoundBox(TimeValue t, INode* inode, ViewExp* /*vp*/, 
 
 void CADDimension::GetDeformBBox(TimeValue t, Box3& box, Matrix3* tm, BOOL /*useSel*/)
 {
+    if (DimensionMode(pblock, t) == 1) {
+        Point3 p1, p2, p3;
+        if (GetDimensionPoints(t, p1, p2, p3)) {
+            box.Init();
+            box.IncludePoints(&p1, 1);
+            box.IncludePoints(&p2, 1);
+            box.IncludePoints(&p3, 1);
+            const Point3 size = box.pmax - box.pmin;
+            box.EnlargeBy(Length(size) * 0.1f + 1.0f);
+        }
+        else {
+            box.Init();
+        }
+        return;
+    }
+
     Box3 localBox, wb;
     Matrix3 otm;
     if (!GetTargetBoxes(t, localBox, wb, otm) || wb.IsEmpty()) {

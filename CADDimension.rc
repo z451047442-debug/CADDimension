@@ -25,20 +25,58 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 //
 // Dialog
 //
-IDD_PANEL DIALOG DISCARDABLE  0, 0, 108, 70
+IDD_PANEL DIALOG DISCARDABLE  0, 0, 200, 200
 STYLE WS_CHILD | WS_VISIBLE
 //FLOATING_DIALOG
 FONT 9, "MS Shell Dlg"
 
 BEGIN
     LTEXT           "目标:",IDC_STATIC,7,10,30,8
-    CONTROL         "",IDC_PICK_TARGET,"CustButton",WS_TABSTOP,39,7,62,14
+    CONTROL         "",IDC_PICK_TARGET,"CustButton",WS_TABSTOP,39,7,90,14
     LTEXT           "文字大小:",IDC_STATIC,7,30,36,8
     CONTROL         "",IDC_TEXT_SIZE_EDIT,"CustEdit",WS_TABSTOP,45,28,35,10
     CONTROL         "",IDC_TEXT_SIZE_SPIN,"SpinnerControl",0x0,82,28,7,10
     LTEXT           "偏移:",IDC_STATIC,7,48,30,8
     CONTROL         "",IDC_OFFSET_EDIT,"CustEdit",WS_TABSTOP,45,46,35,10
     CONTROL         "",IDC_OFFSET_SPIN,"SpinnerControl",0x0,82,46,7,10
+    LTEXT           "起点",IDC_STATIC,7,68,30,8
+    LTEXT           "X",IDC_STATIC,40,68,8,8
+    CONTROL         "",IDC_P1_X_EDIT,"CustEdit",WS_TABSTOP,49,66,28,10
+    CONTROL         "",IDC_P1_X_SPIN,"SpinnerControl",0x0,77,66,7,10
+    LTEXT           "Y",IDC_STATIC,88,68,8,8
+    CONTROL         "",IDC_P1_Y_EDIT,"CustEdit",WS_TABSTOP,97,66,28,10
+    CONTROL         "",IDC_P1_Y_SPIN,"SpinnerControl",0x0,125,66,7,10
+    LTEXT           "Z",IDC_STATIC,136,68,8,8
+    CONTROL         "",IDC_P1_Z_EDIT,"CustEdit",WS_TABSTOP,145,66,28,10
+    CONTROL         "",IDC_P1_Z_SPIN,"SpinnerControl",0x0,173,66,7,10
+    LTEXT           "终点",IDC_STATIC,7,88,30,8
+    LTEXT           "X",IDC_STATIC,40,88,8,8
+    CONTROL         "",IDC_P2_X_EDIT,"CustEdit",WS_TABSTOP,49,86,28,10
+    CONTROL         "",IDC_P2_X_SPIN,"SpinnerControl",0x0,77,86,7,10
+    LTEXT           "Y",IDC_STATIC,88,88,8,8
+    CONTROL         "",IDC_P2_Y_EDIT,"CustEdit",WS_TABSTOP,97,86,28,10
+    CONTROL         "",IDC_P2_Y_SPIN,"SpinnerControl",0x0,125,86,7,10
+    LTEXT           "Z",IDC_STATIC,136,88,8,8
+    CONTROL         "",IDC_P2_Z_EDIT,"CustEdit",WS_TABSTOP,145,86,28,10
+    CONTROL         "",IDC_P2_Z_SPIN,"SpinnerControl",0x0,173,86,7,10
+    LTEXT           "尺寸线",IDC_STATIC,7,108,30,8
+    LTEXT           "X",IDC_STATIC,40,108,8,8
+    CONTROL         "",IDC_PD_X_EDIT,"CustEdit",WS_TABSTOP,49,106,28,10
+    CONTROL         "",IDC_PD_X_SPIN,"SpinnerControl",0x0,77,106,7,10
+    LTEXT           "Y",IDC_STATIC,88,108,8,8
+    CONTROL         "",IDC_PD_Y_EDIT,"CustEdit",WS_TABSTOP,97,106,28,10
+    CONTROL         "",IDC_PD_Y_SPIN,"SpinnerControl",0x0,125,106,7,10
+    LTEXT           "Z",IDC_STATIC,136,108,8,8
+    CONTROL         "",IDC_PD_Z_EDIT,"CustEdit",WS_TABSTOP,145,106,28,10
+    CONTROL         "",IDC_PD_Z_SPIN,"SpinnerControl",0x0,173,106,7,10
+    CONTROL         "显示 XYZ",IDC_SHOW_XYZ,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,126,60,10
+    LTEXT           "箭头:",IDC_STATIC,7,144,30,8
+    CONTROL         "",IDC_ARROW_EDIT,"CustEdit",WS_TABSTOP,45,142,35,10
+    CONTROL         "",IDC_ARROW_SPIN,"SpinnerControl",0x0,82,142,7,10
+    LTEXT           "间隙:",IDC_STATIC,7,162,30,8
+    CONTROL         "",IDC_GAP_EDIT,"CustEdit",WS_TABSTOP,45,160,35,10
+    CONTROL         "",IDC_GAP_SPIN,"SpinnerControl",0x0,82,160,7,10
+    LTEXT           "点位为对象局部坐标",IDC_STATIC,7,180,110,8
 END
 
 
@@ -62,7 +100,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 101
         TOPMARGIN, 7
-        BOTTOMMARGIN, 63
+        BOTTOMMARGIN, 192
     END
 END
 

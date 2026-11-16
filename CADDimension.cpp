@@ -15,6 +15,7 @@
 #include "CADDimension.h"
 #include <gfx.h>
 #include <hold.h>
+#include <ioapi.h>
 #include <SingleWeakRefMaker.h>
 #include <cmath>
 #include <mouseman.h>
@@ -86,9 +87,10 @@ public:
     void Set(PB2Value& /*v*/, ReferenceMaker* owner, ParamID id,
              int /*tabIndex*/, TimeValue /*t*/) override
     {
-        if (id != p_target || !owner) return;
+        if (!owner) return;
         CADDimension* dim = static_cast<CADDimension*>(owner);
         if (dim->m_inClone) return;
+        if (id != p_target && !dim->IsGeometryParam(id)) return;
         dim->ivalid.SetEmpty();
         dim->NotifyDependents(FOREVER, PART_ALL, REFMSG_CHANGE);
     }
@@ -96,8 +98,15 @@ public:
     void PostSet(const PB2Value& /*v*/, ReferenceMaker* owner, ParamID id,
                  int /*tabIndex*/, TimeValue /*t*/) override
     {
-        if (id != p_target || !owner) return;
+        if (!owner) return;
         CADDimension* dim = static_cast<CADDimension*>(owner);
+        if (id != p_target) {
+            if (dim->m_inClone) return;
+            if (!dim->IsGeometryParam(id)) return;
+            dim->ivalid.SetEmpty();
+            dim->NotifyDependents(FOREVER, PART_ALL, REFMSG_CHANGE);
+            return;
+        }
         if (dim->m_inClone || dim->m_suppressUndo || dim->m_inUndoRestore ||
             theHold.RestoreOrRedoing()) {
             dim->m_pendingCount = 0;
@@ -129,13 +138,29 @@ public:
 static CADDimensionPBAccessor g_caddimAccessor;
 
 //--------------------------------------------------------------------------
+// 旧场景兼容：加载完成后把 B1 的引用槽 1 目标迁移到 pblock。
+// PostLoadCallback 在 pblock 数据加载完成之后执行（ParamBlock2PLCB 优先级 0）。
+//--------------------------------------------------------------------------
+class CADDimPostLoadMigration : public PostLoadCallback
+{
+    MaxSDK::TypedSingleWeakRefMaker<CADDimension> dim;
+public:
+    explicit CADDimPostLoadMigration(CADDimension* d) : dim(d) {}
+    void proc(ILoad* /*iload*/) override
+    {
+        if (CADDimension* d = dim.Get())
+            d->MigrateLegacyTarget(0);
+    }
+};
+
+//--------------------------------------------------------------------------
 // ClassDesc
 //--------------------------------------------------------------------------
 class CADDimensionClassDesc : public ClassDesc2
 {
 public:
     int          IsPublic() override               { return TRUE; }
-    void*        Create(BOOL /*loading*/) override { return new CADDimension(); }
+    void*        Create(BOOL loading) override      { return new CADDimension(loading != FALSE); }
     const TCHAR* ClassName() override
     {
         const TCHAR* s = GetString(IDS_CLASS_NAME);
@@ -186,16 +211,67 @@ static ParamBlockDesc2 caddim_param_blk(
         p_ui, TYPE_SPINNER, EDITTYPE_FLOAT, IDC_OFFSET_EDIT, IDC_OFFSET_SPIN, 0.1f,
         p_nonLocalizedName, _T("Dimension Offset"),
         p_end,
+    p_point1, _T("point1"), TYPE_POINT3, 0, 0,
+        p_default, Point3(0.0f, 0.0f, 0.0f),
+        p_accessor, &g_caddimAccessor,
+        p_nonLocalizedName, _T("Point 1"),
+        p_end,
+    p_point2, _T("point2"), TYPE_POINT3, 0, 0,
+        p_default, Point3(0.0f, 0.0f, 0.0f),
+        p_accessor, &g_caddimAccessor,
+        p_nonLocalizedName, _T("Point 2"),
+        p_end,
+    p_dimpoint, _T("dimPoint"), TYPE_POINT3, 0, 0,
+        p_default, Point3(0.0f, 0.0f, 0.0f),
+        p_accessor, &g_caddimAccessor,
+        p_nonLocalizedName, _T("Dimension Point"),
+        p_end,
+    p_arrow_size, _T("arrowSize"), TYPE_FLOAT, 0, 0,
+        p_default, 7.0f,
+        p_range, 4.0f, 20.0f,
+        p_ui, TYPE_SPINNER, EDITTYPE_FLOAT, IDC_ARROW_EDIT, IDC_ARROW_SPIN, 0.1f,
+        p_accessor, &g_caddimAccessor,
+        p_nonLocalizedName, _T("Arrow Size"),
+        p_end,
+    p_extension_gap, _T("extensionGap"), TYPE_FLOAT, 0, 0,
+        p_default, 2.0f,
+        p_range, 0.0f, 20.0f,
+        p_ui, TYPE_SPINNER, EDITTYPE_FLOAT, IDC_GAP_EDIT, IDC_GAP_SPIN, 0.1f,
+        p_accessor, &g_caddimAccessor,
+        p_nonLocalizedName, _T("Extension Gap"),
+        p_end,
+    p_show_xyz, _T("showXYZ"), TYPE_BOOL, 0, 0,
+        p_default, FALSE,
+        p_ui, TYPE_SINGLECHECKBOX, IDC_SHOW_XYZ,
+        p_accessor, &g_caddimAccessor,
+        p_nonLocalizedName, _T("Show XYZ"),
+        p_end,
+    p_mode, _T("mode"), TYPE_INT, 0, 0,
+        p_default, 0,
+        p_range, 0, 1,
+        p_accessor, &g_caddimAccessor,
+        p_nonLocalizedName, _T("Mode"),
+        p_end,
     p_end
 );
+
+extern ParamMap2UserDlgProc* CreateCADDimensionDlgProc();
+
+static struct CADDimDlgProcInstaller
+{
+    CADDimDlgProcInstaller()
+    {
+        caddim_param_blk.SetUserDlgProc(CreateCADDimensionDlgProc());
+    }
+} g_caddimDlgProcInstaller;
 
 //--------------------------------------------------------------------------
 // 构造 / 初始化 / 引用管理
 //--------------------------------------------------------------------------
-CADDimension::CADDimension()
+CADDimension::CADDimension(bool loading)
 {
     ivalid.SetInfinite();
-    Create(); // Object 没有 virtual Create()，这是本类的初始化入口
+    Create(loading); // Object 没有 virtual Create()，这是本类的初始化入口
 }
 
 CADDimension::~CADDimension()
@@ -203,81 +279,53 @@ CADDimension::~CADDimension()
     DeleteAllRefsFromMe();
 }
 
-void CADDimension::Create()
+void CADDimension::Create(bool loading)
 {
     // P_AUTO_CONSTRUCT 会创建参数块并通过 SetReference(kPBlockRef, ...) 挂接。
     if (!pblock) {
         GetCADDimensionDesc()->MakeAutoParamBlocks(this);
         pblock = GetParamBlock(kPBlockRef);
     }
+
+    // 新建对象默认三点模式；读档对象保持 p_mode 的默认值 0（旧场景兼容）。
+    if (!loading && pblock)
+        pblock->SetValue(p_mode, 0, 1);
 }
 
 INode* CADDimension::GetTargetNode(TimeValue t) const
 {
-    if (!pblock) return nullptr;
-    Interval v;
-    v.SetInfinite();
-    return pblock->GetINode(p_target, t, v);
+    INode* target = nullptr;
+    if (pblock) {
+        Interval v;
+        v.SetInfinite();
+        target = pblock->GetINode(p_target, t, v);
+    }
+    // 旧场景在 post-load 迁移之前只读回退到兼容槽；Display/Eval 不写 pblock。
+    if (!target && m_legacyTarget)
+        target = m_legacyTarget;
+    return target;
 }
 
 RefTargetHandle CADDimension::GetReference(int i)
 {
-    return (i == kPBlockRef) ? static_cast<RefTargetHandle>(pblock) : nullptr;
+    if (i == kPBlockRef) return static_cast<RefTargetHandle>(pblock);
+    if (i == kLegacyTargetRef) return static_cast<RefTargetHandle>(m_legacyTarget);
+    return nullptr;
 }
 
 void CADDimension::SetReference(int i, RefTargetHandle rtarg)
 {
-    if (i == kPBlockRef)
+    if (i == kPBlockRef) {
         pblock = static_cast<IParamBlock2*>(rtarg);
-}
-
-class CADDimCloneTargetPostPatch : public PostPatchProc
-{
-    IParamBlock2* origPblock;
-    INode*        originalTarget;
-    CADDimension* clonedObj;
-public:
-    CADDimCloneTargetPostPatch(IParamBlock2* p, INode* t, CADDimension* c)
-        : origPblock(p), originalTarget(t), clonedObj(c) {}
-
-    int Proc(RemapDir& remap) override
-    {
-        if (!origPblock || !originalTarget) return TRUE;
-        IParamBlock2* clonedPblock =
-            static_cast<IParamBlock2*>(remap.FindMapping(origPblock));
-        if (!clonedPblock) return TRUE;
-        if (clonedPblock->GetINode(p_target, 0) == originalTarget) return TRUE;
-
-        if (clonedObj) clonedObj->m_inClone = true;
-        const BOOL wasEnabled = clonedPblock->IsNotificationEnabled();
-        clonedPblock->EnableNotifications(FALSE);
-        clonedPblock->SetValue(p_target, 0, originalTarget);
-        clonedPblock->EnableNotifications(wasEnabled);
-        if (clonedObj) clonedObj->m_inClone = false;
-        return TRUE;
+        return;
     }
-};
-
-RefTargetHandle CADDimension::Clone(RemapDir& remap)
-{
-    CADDimension* obj = new CADDimension();
-    INode* originalTarget = GetTargetNode(0);
-
-    BaseClone(this, obj, remap);
-
-    // BaseClone copies base-class data; clone the pblock reference explicitly
-    // (see ref.h:2073-2100 and the CAT CloneParamBlock sample).
-    if (pblock) obj->ReplaceReference(kPBlockRef, remap.CloneRef(pblock));
-
-    // D4: the pblock is the only storage. Fix it after RemapDir backpatching,
-    // otherwise the cloned target can be overwritten by the backpatch pass.
-    if (originalTarget && pblock)
-        remap.AddPostPatchProc(
-            new CADDimCloneTargetPostPatch(pblock, originalTarget, obj), true);
-
-    obj->ivalid.SetEmpty();
-    return obj;
+    if (i == kLegacyTargetRef) {
+        m_legacyTarget = static_cast<INode*>(rtarg);
+        if (m_legacyTarget)
+            m_legacyMigrated = false;
+    }
 }
+
 
 RefResult CADDimension::NotifyRefChanged(const Interval& /*changeInt*/,
                                          RefTargetHandle hTarget,
@@ -285,10 +333,10 @@ RefResult CADDimension::NotifyRefChanged(const Interval& /*changeInt*/,
                                          RefMessage message,
                                          BOOL /*propagate*/)
 {
-    if (m_inClone) return REF_SUCCEED;
+    if (m_inClone || m_migrating) return REF_SUCCEED;
 
     if (message == REFMSG_CHANGE || message == REFMSG_SUBANIM_STRUCTURE_CHANGED) {
-        if (hTarget == pblock) {
+        if (hTarget == pblock || (m_legacyTarget && hTarget == m_legacyTarget)) {
             // The pblock owns the node reference. If the target was deleted,
             // GetTargetNode() returns null and the no-target marker is drawn.
             ivalid.SetEmpty();
@@ -298,6 +346,12 @@ RefResult CADDimension::NotifyRefChanged(const Interval& /*changeInt*/,
     else if (message == REFMSG_TARGET_DELETED) {
         // The pblock handles the node reference; never call
         // DeleteReference()/ReplaceReference() from this notification.
+        if (m_legacyTarget && hTarget == m_legacyTarget) {
+            // Only clear the compatibility slot; do not touch the pblock target
+            // that migration may have just written.
+            m_legacyTarget = nullptr;
+            return REF_SUCCEED;
+        }
         ivalid.SetEmpty();
         NotifyDependents(FOREVER, PART_ALL, REFMSG_CHANGE);
     }
@@ -338,12 +392,63 @@ void CADDimension::SetTargetNode(INode* node, TimeValue t, bool allowUndo)
     m_suppressUndo = prev;
 }
 
+IOResult CADDimension::Load(ILoad* iload)
+{
+    IOResult res = GeomObject::Load(iload);
+    if (res == IO_OK && iload)
+        iload->RegisterPostLoadCallback(new CADDimPostLoadMigration(this));
+    return res;
+}
+
+bool CADDimension::IsGeometryParam(ParamID id) const
+{
+    return id == p_point1 || id == p_point2 || id == p_dimpoint ||
+           id == p_arrow_size || id == p_extension_gap ||
+           id == p_show_xyz || id == p_mode;
+}
+
+void CADDimension::MigrateLegacyTarget(TimeValue t)
+{
+    if (m_legacyMigrated) return;
+    if (!pblock) return;
+
+    INode* legacy = m_legacyTarget;
+    if (!legacy) {
+        m_legacyMigrated = true;
+        return;
+    }
+
+    const bool prevMigrating = m_migrating;
+    const bool prevSuppress = m_suppressUndo;
+    m_migrating = true;
+    m_suppressUndo = true;
+
+    Interval iv;
+    iv.SetInfinite();
+    INode* current = pblock->GetINode(p_target, t, iv);
+    if (!current)
+        pblock->SetValue(p_target, t, legacy);
+
+    ReplaceReference(kLegacyTargetRef, nullptr);
+    m_legacyTarget = nullptr;
+    m_legacyMigrated = true;
+
+    m_suppressUndo = prevSuppress;
+    m_migrating = prevMigrating;
+
+    ivalid.SetEmpty();
+    NotifyDependents(FOREVER, PART_ALL, REFMSG_CHANGE);
+}
+
 MSTR CADDimension::SubAnimName(int i, bool localized)
 {
     MSTR s;
-    if (i == 0) {
+    if (i == kPBlockRef) {
         const TCHAR* n = localized ? GetString(IDS_PARAMS) : _T("Parameters");
         s = n ? n : _T("Parameters");
+    }
+    else if (i == kLegacyTargetRef) {
+        s = _T("Legacy Target");
     }
     return s;
 }
@@ -361,6 +466,7 @@ void CADDimension::GetClassName(MSTR& s, bool localized) const
 
 void CADDimension::BeginEditParams(IObjParam* ip, ULONG flags, Animatable* prev)
 {
+    MigrateLegacyTarget(ip ? ip->GetTime() : 0);
     GetCADDimensionDesc()->BeginEditParams(ip, this, flags, prev);
 }
 
