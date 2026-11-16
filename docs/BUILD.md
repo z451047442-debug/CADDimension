@@ -1,7 +1,6 @@
 # 构建、部署与加载
 
-> 以 `CADDimension.vcxproj`、`CADDimension.def` 与 `scripts/probe_plugin*.ini`
-> 为准。项目只支持 **x64**，目标 3ds Max 版本为 2027。
+> 以 `CADDimension.vcxproj` 与 `scripts/probe_plugin*.ini` 为准；`.def` 保留为历史文件，不参与链接。项目只支持 **x64**，目标 3ds Max 版本为 2027。
 
 ## 1. 前置条件
 
@@ -74,7 +73,7 @@ Release 库。
 
 - 附加库目录：`$(MaxSDK)\lib\x64\Release\`
 - 附加依赖：`bmm.lib;core.lib;Geom.lib;gfx.lib;mesh.lib;maxutil.lib;maxscrpt.lib;manipsys.lib;paramblk2.lib`
-- 模块定义文件：`CADDimension.def`
+- 模块定义文件：不使用；入口由 `extern "C" __declspec(dllexport)` 导出，链接加 `/OPT:NOICF`
 - 链接增量：Debug/Hybrid 关闭
 - 全程序优化：关闭
 
@@ -134,26 +133,21 @@ Customize → Configure System Paths → 3rd Party Plug-Ins 中添加输出目�
 批处理加载示例：
 
 ```bat
-"C:\Program Files\Autodesk\3ds Max 2027\3dsmaxbatch.exe" ^
+"D:/Program Files/3ds Max 2027/3ds Max 2027/3dsmaxbatch.exe" ^
     scripts\probe_b1.ms -p scripts\probe_plugin.ini ^
     -log scripts\probe_b1.log -v 4
 ```
 
 ## 7. 导出符号
 
-`CADDimension.def` 定义了 3ds Max 所需的标准导出：
+入口使用 `extern "C" __declspec(dllexport)`，`.def` 不参与链接；链接器按名称导出：
 
-| 函数 | 序号 |
-|------|------|
-| `LibDescription` | 1 |
-| `LibNumberClasses` | 2 |
-| `LibClassDesc` | 3 |
-| `LibVersion` | 4 |
-| `LibInitialize` | 6 |
-| `LibShutdown` | 7 |
+`LibDescription`、`LibNumberClasses`、`LibClassDesc`、`LibVersion`、`LibInitialize`、`LibShutdown`。
 
-序号 5 未使用。新增插件类时需同步修改 `LibNumberClasses()` 与
-`LibClassDesc()`（`DllEntry.cpp:48-61`）。
+序号由链接器分配，不应依赖固定序数。`LibNumberClasses()` 返回 4，`LibClassDesc(0..3)`
+分别返回 Dimension/Text/Leader/Table 的 `ClassDesc2`。`/OPT:NOICF` 用于避免 COMDAT
+折叠导致 `dumpbin` 显示导出名错绑。DLO 还可能导出少量 SDK `CoreExport` 符号，
+属已知 P2，不影响加载。
 
 ## 8. 故障排查
 

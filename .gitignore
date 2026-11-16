@@ -29,3 +29,7 @@ scripts/fixtures/cadleader.max
 # M3 probe artifacts
 scripts/probe_cadtable*.log
 scripts/fixtures/cadtable.max
+# local probe leftovers
+scripts/probe_b1_scene.backup.max
+tests/TypeStringProbe/probe_plugin2.ini
+tests/TypeStringProbe/probe_plugin3.ini

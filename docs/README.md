@@ -1,15 +1,14 @@
 # CADDimension 开发文档
 
-CADDimension 是面向 **3ds Max 2027** 的 C++ 插件（`.dlo`），注册为 `GeomObject`
-派生对象，在视口中为目标节点绘制 AutoCAD 风格的尺寸标注：目标局部包围盒的
-12 条边、X/Y/Z 三条尺寸线、尺寸界线、箭头与尺寸文字。
+CADDimension 是面向 **3ds Max 2027** 的 C++ 插件 Bundle（`.dlo`），注册四个类：
+`CADDimension`（三点/包围盒双模式尺寸标注）、`CADText`（屏幕文字）、
+`CADLeader`（引线）、`CADTable`（网格表格）。
 
-本目录是项目的开发文档入口，内容以提交 `25884bb`（2026-11-16）的源码为准。
+本目录是项目的开发文档入口，内容以提交 `b2246d7`（2026-11-16）的源码为准。
 修改代码后，请同步更新对应文档。
 
-> **规划状态**：当前分支只注册 `CADDimension` 一个类，且是目标包围盒标注实现；
-> 四插件注释工具集（三点交互、`showXYZ`、CADText/CADLeader/CADTable）尚处于设计
-> 阶段，见 [ANNOTATION_SUITE.md](ANNOTATION_SUITE.md)。
+> **实现状态**：当前分支已注册四个类，M0–M4b 自动化探针全部通过；
+> 交互/视口/中文面板的人工验收仍待 step 11。见 [ANNOTATION_SUITE.md](ANNOTATION_SUITE.md)。
 
 ## 文档索引
 

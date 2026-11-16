@@ -55,7 +55,7 @@
 
 - `CADDimension.rc` 使用 **GBK / code page 936**，文件内声明
   `#pragma code_page(936)`。不要用 UTF-8 重存，否则中文标签会变成乱码。
-- 当前中文标签：`目标:`、`文字大小:`、`偏移:`；字符串表 `IDS_PARAMS` 为"参数"。
+- 当前中文标签覆盖四个面板：Dimension（目标/文字大小/偏移/点位/显示 XYZ/箭头/间隙）、Text（文字/字号）、Leader（文字/字号/箭头）、Table（行列/格宽高/字号）。
 - 新增界面文本的步骤：
   1. `resource.h` 增加控件 ID（当前下一个可用值见 `_APS_NEXT_CONTROL_VALUE`）；
   2. `CADDimension.rc` 在 `IDD_PANEL` 中加入控件（保持 GBK 编码）；
@@ -187,15 +187,15 @@ if (theHold.Put(new CADDimMyRestore(this, oldValue, newValue)) && started)
 必须有真实包围盒。新增例外时，务必同时更新创建拾取过滤与属性赋值校验，避免
 "创建时可绑、事后可绑"行为不一致。
 
-### 5.6 扩展为多类 Plugin Bundle
+### 5.6 多类 Plugin Bundle
 
-当前 DLL 只注册一个类。扩展为四类时，把 `LibNumberClasses()` 改为 4，并在
-`LibClassDesc(i)` 中分发到各自的 `ClassDesc2`；类 ID、基类、共享绘制与撤销契约
-见 [ANNOTATION_SUITE.md](ANNOTATION_SUITE.md)。
+当前 DLL 已注册四类：`LibNumberClasses()` 返回 4，`LibClassDesc(0..3)` 分发到
+Dimension/Text/Leader/Table。类 ID、基类、共享绘制与撤销契约见
+[ANNOTATION_SUITE.md](ANNOTATION_SUITE.md)。
 
 ## 6. 不可破坏的不变量
 
-1. `NumRefs() == 1`，唯一引用是参数块；目标只存在于 `p_target`。
+1. `CADText/CADLeader/CADTable` 的 `NumRefs() == 1`；`CADDimension` 为 2（槽0 pblock、槽1 旧版兼容目标，迁移后清空）。
 2. 参数块持有节点引用；不要在 `REFMSG_TARGET_DELETED` 中操作引用。
 3. 撤销只在正常用户赋值时捕获；克隆/创建/回放必须抑制。
 4. 克隆必须在 `RemapDir` 回填后修复目标节点。

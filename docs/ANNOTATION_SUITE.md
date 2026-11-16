@@ -147,7 +147,7 @@ __declspec(dllexport) ClassDesc* LibClassDesc(int i)
 
 ### 4.6 通用数据 / 撤销 / 克隆契约
 
-- 每类一个 `IParamBlock2`；参数块是唯一引用源（`NumRefs() == 1`）。
+- 每类一个 `IParamBlock2`；`CADText/CADLeader/CADTable` 为 `NumRefs()==1`；`CADDimension` 为 2（槽1 仅旧版兼容，迁移后清空）。
 - 节点引用只放在 `TYPE_INODE` 参数中；不要新增引用槽。
 - 用户可撤销的变更通过 `PBAccessor::PreSet/PostSet` + `RestoreObj` 捕获；
   创建期、克隆期、撤销回放期必须抑制记录。

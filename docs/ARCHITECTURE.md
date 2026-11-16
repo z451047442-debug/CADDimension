@@ -22,18 +22,20 @@ CADDimension 是一个 `GeomObject` 派生插件对象。它不生成网格，�
 | 文件 | 职责 |
 |------|------|
 | `CADDimension.h` | 类声明、Class_ID、参数/引用枚举、私有状态与辅助函数 |
-| `CADDimension.cpp` | 参数块、访问器与撤销、创建回调、包围盒、绘制、命中测试、克隆 |
-| `DllEntry.cpp` | `DllMain`、`LibDescription`/`LibNumberClasses`/`LibClassDesc` 等导出 |
-| `CADDimension.rc` | `IDD_PANEL` 对话框与字符串表（GBK 编码） |
+| `CADDimension.cpp` | 核心：参数块、访问器/撤销、迁移、ClassDesc |
+| `CADDimensionBounds/Clone/Create/Draw/Hit/ThreePoint/UI.cpp` | 按职责拆分 |
+| `CADText.cpp` / `CADLeader.cpp` / `CADTable.cpp` | 三个新类 |
+| `Common/CADDraw.cpp` / `Common/CADHit.cpp` | 共享绘制/命中 |
+| `DllEntry.cpp` | 四个 ClassDesc 注册与六入口导出 |
+| `CADDimension.rc` | 四个对话框与字符串表（GBK 编码） |
 | `resource.h` | 资源 ID 定义 |
-| `CADDimension.def` | DLL 导出符号与序号 |
+| `CADDimension.def` | 历史文件，不参与链接 |
 | `CADDimension.vcxproj` | 三配置构建、SDK 属性表、链接库 |
 
 ## 3. 注册与对象模型
 
-- `DllEntry.cpp` 导出标准插件入口；当前 `LibNumberClasses()` 返回 1，`LibClassDesc(0)`
-  返回 `GetCADDimensionDesc()`（`DllEntry.cpp:48-61`）。规划中的四类 Bundle
-  （四个 ClassDesc）见 [ANNOTATION_SUITE.md](ANNOTATION_SUITE.md)。
+- `DllEntry.cpp` 导出标准插件入口；`LibNumberClasses()` 返回 4，`LibClassDesc(0..3)`
+  分别返回 Dimension/Text/Leader/Table 的 `ClassDesc2`（`DllEntry.cpp:51-67`）。
 - `CADDimensionClassDesc` 派生自 `ClassDesc2`，`Create()` 返回 `new CADDimension()`
   （`CADDimension.cpp:240-260`）。
 - `Class_ID(0x5bcf0c90, 0x36fdd779)` 与 `GEOMOBJECT_CLASS_ID` 必须保持不变，
@@ -51,9 +53,11 @@ INode（标注节点）
                                                               └─ 目标 Object
 ```
 
-- `NumRefs() == 1`、`NumSubs() == 1`，唯一的引用槽 `kPBlockRef = 0` 指向参数块
-  （`CADDimension.h:73-81`）。
+- `CADDimension` 为 `NumRefs()==2`、`NumSubs()==2`：槽0 pblock、槽1 旧版兼容目标
+  （迁移后清空）；CADText/Leader/Table 为单 pblock。pblock 仍是目标真源。
 - **目标节点不再单独占引用槽**，只存在于参数块的 `TYPE_INODE` 参数中。
+- **M1b 更新**：`CADDimension` 现为 `NumRefs()==2`：槽0 pblock、槽1 旧版兼容目标；
+  `PostLoadCallback` 迁移后清空槽1。CADText/Leader/Table 仍为单 pblock。
 - 这样做的原因：早期实现用两个引用（参数块 + `P_OWNERS_REF` 节点），整场景克隆
   时 `RemapDir` 回填可能让克隆参数块里的目标被改写，出现"克隆标注指向克隆目标"
   或引用分叉。单引用源消除了两份状态，克隆逻辑只需修复参数块（B1.1a）。
@@ -74,6 +78,11 @@ INode（标注节点）
 | `p_target` | `targetNode` | `targetNode` | `TYPE_INODE` | 空 | — | `IDC_PICK_TARGET` 拾取按钮 |
 | `p_text_size` | `textSize` | `textSize` | `TYPE_FLOAT` | 12.0 | 6–48 | `IDC_TEXT_SIZE_EDIT/SPIN` |
 | `p_dim_offset` | `dimensionOffset` | `dimensionOffset` | `TYPE_FLOAT` | 28.0 | 8–200 | `IDC_OFFSET_EDIT/SPIN` |
+| `p_point1/2/dimpoint` | `point1/2/dimPoint` | 同名 | `TYPE_POINT3` | (0,0,0) | — | 9 个点位 spinner |
+| `p_arrow_size` | `arrowSize` | `arrowSize` | `TYPE_FLOAT` | 7.0 | 4–20 | `IDC_ARROW_EDIT/SPIN` |
+| `p_extension_gap` | `extensionGap` | `extensionGap` | `TYPE_FLOAT` | 2.0 | 0–20 | `IDC_GAP_EDIT/SPIN` |
+| `p_show_xyz` | `showXYZ` | `showXYZ` | `TYPE_BOOL` | false | — | `IDC_SHOW_XYZ` |
+| `p_mode` | `mode` | `mode` | `TYPE_INT` | 0 | 0–1 | 脚本 |
 
 `p_target` 的关键标志：
 
@@ -308,16 +317,14 @@ margin    = worldPerPixel * marginPx * NonScalingObjectSize
 
 - 只标注目标**局部轴对齐包围盒（AABB）**，不计算最小/定向包围盒。
 - 灯光不能作为目标；辅助对象必须有非空形变包围盒。
-- 屏幕图元容量固定：48 条线段、4 个标签（3 轴 + 汇总）。
+- 屏幕图元容量：Dimension 包围盒 48 段/4 标签、三点 32 段/4 标签；Table 256 段/900 标签。
 - 与视向几乎平行的轴不画尺寸线，但汇总标签仍显示三向尺寸。
 - 标注位置由目标世界包围盒决定，不随标注节点自身变换移动；节点变换只在
   "无目标标记"与 `GetLocalBoundBox` 中参与计算。
 - 非可渲染对象（`IsRenderable() == 0`），不参与渲染输出。
 - 间接环只做深度上限防御，不是通用环检测。
-- 旧版 B1 场景（`NumRefs == 2`）的加载兼容性由 G7 探针验证，但仓库不保存
-  `.max` 场景文件。
-- 当前 `CADDimension` 使用目标包围盒标注；规划中的"三点线性标注 + showXYZ"
-  尚未实现，详见 [ANNOTATION_SUITE.md](ANNOTATION_SUITE.md)。
+- 旧版 fixture `scripts/fixtures/legacy_b1_nrefs2.max` 已提交；加载后迁移到 pblock，槽1清空。
+- `CADDimension` 已实现三点 + showXYZ + p_mode 双模式；包围盒模式保留旧场景。
 
 ## 14. 源码索引
 

@@ -9,7 +9,7 @@
 - 使用与配置匹配的插件 ini：
   `probe_plugin.ini`（Release）、`probe_plugin_debug.ini`（Debug）、
   `probe_plugin_hybrid.ini`（Hybrid）。
-- 3ds Max 2027 安装目录下存在 `3dsmaxbatch.exe`。
+"D:/Program Files/3ds Max 2027/3ds Max 2027/3dsmaxbatch.exe" scripts\<probe>.ms -p scripts\probe_plugin.ini -dm on -log scripts\<probe>.log -v 4
 - 确保插件搜索路径中没有另一份旧的 `CADDimension.dlo`，避免加载到旧版本。
 
 ## 2. 批处理探针
@@ -17,7 +17,7 @@
 ### 2.1 运行命令
 
 ```bat
-"C:\Program Files\Autodesk\3ds Max 2027\3dsmaxbatch.exe" ^
+"D:/Program Files/3ds Max 2027/3ds Max 2027/3dsmaxbatch.exe" scripts\<probe>.ms -p scripts\probe_plugin.ini -dm on -log scripts\<probe>.log -v 4
     scripts\probe_b1.ms -p scripts\probe_plugin.ini ^
     -log scripts\probe_b1.log -v 4
 ```
@@ -60,7 +60,7 @@
 `scripts\make_legacy_b1.ms` 用于生成旧格式场景：
 
 ```bat
-"<3ds Max 2027>\3dsmaxbatch.exe" scripts\make_legacy_b1.ms ^
+"D:/Program Files/3ds Max 2027/3ds Max 2027/3dsmaxbatch.exe" scripts\<probe>.ms -p scripts\probe_plugin.ini -dm on -log scripts\<probe>.log -v 4
     -p scripts\probe_plugin.ini -log scripts\make_legacy_b1.log -v 4
 ```
 

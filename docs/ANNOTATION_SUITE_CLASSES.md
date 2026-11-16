@@ -12,7 +12,7 @@
 ## 1. 公共约定
 
 - 四类共享一个 `.dlo`、一个 `hInstance` 与 `CAD Tools` 类别。
-- 每类一个 `IParamBlock2`，`NumRefs() == 1`，节点引用只放在 `TYPE_INODE` 参数中。
+- 每类一个 `IParamBlock2`；`CADText/CADLeader/CADTable` 为 `NumRefs()==1`，`CADDimension` 为 2（槽1 旧版兼容，迁移后清空）；节点引用只放在 `TYPE_INODE` 参数中。
 - 每类独立 `Class_ID`；`CADDimension` 的现有 ID 不可更改。
 - 所有 `Display()` 使用 `ViewExp::NonScalingObjectSize()` 计算屏幕尺寸。
 - 字符串资源使用 `GetString(id)`，资源缺失时回退到英文常量。
