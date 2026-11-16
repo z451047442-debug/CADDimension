@@ -147,7 +147,7 @@ Customize → Configure System Paths → 3rd Party Plug-Ins 中添加输出目�
 序号由链接器分配，不应依赖固定序数。`LibNumberClasses()` 返回 4，`LibClassDesc(0..3)`
 分别返回 Dimension/Text/Leader/Table 的 `ClassDesc2`。`/OPT:NOICF` 用于避免 COMDAT
 折叠导致 `dumpbin` 显示导出名错绑。DLO 还可能导出少量 SDK `CoreExport` 符号，
-属已知 P2，不影响加载。
+属已知 P2，不影响加载。PE 导出总数为 8（6 个插件入口 + 2 个 SDK CoreExport）。
 
 ## 8. 故障排查
 

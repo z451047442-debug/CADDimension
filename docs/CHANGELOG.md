@@ -3,14 +3,14 @@
 > 里程碑编号沿用提交信息中的 B1–B4d。日期取自 git 提交日期。
 > 更细的代码差异请查看对应提交：`git show <hash>`。
 
-## 未发布（工作区）
+## 发布前文档准备（1.0.0）
 
 ### 文档
 
 - 新增 `docs/` 开发文档：README（索引）、ARCHITECTURE、BUILD、DEVELOPMENT、
   TESTING、CHANGELOG。
 - 新增 `docs/ANNOTATION_SUITE.md`：四插件 Bundle 总体规划、CADDimension 三点
-  标注与 `showXYZ` 设计、待确认决策。
+  标注与 `showXYZ` 设计、已确定决策（历史记录）。
 - 新增 `docs/ANNOTATION_SUITE_CLASSES.md`：CADText/CADLeader/CADTable 类声明、
   四类 ClassDesc 注册草案与资源清单。
 
@@ -138,6 +138,6 @@
 - 三配置构建；Dimension 29、Text 7、Leader 11、Table 20、B1 16 探针 0 FAIL。
 
 ### Known limitations
-- 交互/视口/面板/MUI 人工验收待 step 11。
+- 交互/视口/面板/MUI 人工验收已完成（2026-11-16）。
 - `GraphicsWindow` 无 `getColor`，颜色不能恢复。
 - `CADTable` 屏幕对齐，不随对象旋转；首期单元格编辑仅 MAXScript。

@@ -4,7 +4,7 @@
 > 分支 `feature/annotation-suite` 已注册四个类：
 > `CADDimension`（三点 + `showXYZ` + `p_mode` 旧场景兼容）、`CADText`、
 > `CADLeader`、`CADTable`。实现与文件布局见 [ARCHITECTURE.md](ARCHITECTURE.md)，
-> 验证命令见 [TESTING.md](TESTING.md)。交互/视口/面板的人工验收仍待 step 11。
+> 验证命令见 [TESTING.md](TESTING.md)。交互/视口/面板的人工验收已完成（2026-11-16）。
 > 类声明与 ClassDesc 注册代码见
 > [ANNOTATION_SUITE_CLASSES.md](ANNOTATION_SUITE_CLASSES.md)。
 
@@ -48,7 +48,7 @@
 | `CADTable` | `HelperObject`，`TYPE_STRING_TAB` 单元格，默认 20×20 |
 | 共享绘制/命中 | `Common/CADDraw`、`Common/CADHit` |
 | 自动化探针 | `scripts/probe_dim_three_point.ms`、`probe_cadtext.ms`、`probe_cadleader.ms`、`probe_cadtable.ms`、`scripts/probe_b1.ms` |
-| 待人工验收 | 三击/单击交互、视口视觉、中文面板/MUI、显示性能 |
+| 人工验收 | 已完成（2026-11-16）：三击/单击交互、视口视觉、中文面板/MUI、显示性能 |
 
 > 下文的“目标设计”仍作为实现对照保留；实际签名/参数以源码为准。
 
@@ -378,9 +378,9 @@ distance = Length(p2 - p1)
 - `LibNumberClasses()` / `LibClassDesc()` 与各 `ClassDesc2` 注册草案；
 - 新增资源 ID、中文标签与编译前检查清单。
 
-> 草案未编译、未接入工程；实现时以 2027 SDK 头文件的纯虚函数集为准。
+> 已实现并通过 1.0.0 自动化/人工验收；实际签名以源码为准。
 
-## 8. 待确认决策
+## 8. 决策记录（已在 1.0.0 确定，保留为历史）
 
 | # | 决策 | 选项 | 建议 |
 |---|------|------|------|

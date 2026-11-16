@@ -8,7 +8,7 @@ CADDimension 是面向 **3ds Max 2027** 的 C++ 插件 Bundle（`.dlo`），注�
 修改代码后，请同步更新对应文档。
 
 > **实现状态**：当前分支已注册四个类，M0–M4b 自动化探针全部通过；
-> 交互/视口/中文面板的人工验收仍待 step 11。见 [ANNOTATION_SUITE.md](ANNOTATION_SUITE.md)。
+> 交互/视口/中文面板的人工验收已完成（2026-11-16）。见 [ANNOTATION_SUITE.md](ANNOTATION_SUITE.md)。
 
 ## 文档索引
 
@@ -86,5 +86,5 @@ CADDimension/
 - 单 DLL 注册 4 类：`CADDimension`、`CADText`、`CADLeader`、`CADTable`。
 - 三配置构建：`Release` / `Debug` / `Hybrid`，输出 `x64/<Config>/Plugins/CADDimension.dlo` 与 `en-US/CADDimension.dlo.mui`。
 - 自动化探针全部通过：Dimension 29、Text 7、Leader 11、Table 20、B1 16（0 FAIL）。
-- 已确认限制：三击/单击交互、视口视觉、中文面板/MUI、20×20 性能仍需人工验收；`GraphicsWindow` 无 `getColor`，颜色按对象重设。
+- 人工验收已完成（2026-11-16）；已知限制：`GraphicsWindow` 无 `getColor`，颜色按对象重设。
 - 版本：**1.0.0**（DLL `VERSIONINFO` 1.0.0.0，2026-11-16）。
