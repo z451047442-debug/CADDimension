@@ -256,14 +256,6 @@ static ParamBlockDesc2 caddim_param_blk(
 
 extern ParamMap2UserDlgProc* CreateCADDimensionDlgProc();
 
-static struct CADDimDlgProcInstaller
-{
-    CADDimDlgProcInstaller()
-    {
-        caddim_param_blk.SetUserDlgProc(CreateCADDimensionDlgProc());
-    }
-} g_caddimDlgProcInstaller;
-
 //--------------------------------------------------------------------------
 // 构造 / 初始化 / 引用管理
 //--------------------------------------------------------------------------
@@ -477,6 +469,15 @@ void CADDimension::BeginEditParams(IObjParam* ip, ULONG flags, Animatable* prev)
 {
     MigrateLegacyTarget(ip ? ip->GetTime() : 0);
     GetCADDimensionDesc()->BeginEditParams(ip, this, flags, prev);
+
+    // The param-map dialog proc is owned by the currently open ParamMap.
+    // Install it only after the map exists; LibInitialize/DllMain is too early.
+    if (!caddim_param_blk.GetUserDlgProc())
+    {
+        ParamMap2UserDlgProc* proc = CreateCADDimensionDlgProc();
+        if (proc && !GetCADDimensionDesc()->SetUserDlgProc(&caddim_param_blk, proc))
+            proc->DeleteThis();
+    }
 }
 
 void CADDimension::EndEditParams(IObjParam* ip, ULONG flags, Animatable* next)

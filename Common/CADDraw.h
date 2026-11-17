@@ -30,6 +30,12 @@ namespace cad
     float   NonScalingFactor(ViewExp* vpt);
     void    BoxCorners(const Box3& b, Point3 c[8]);
 
+    // Safe inversion for node/object transforms. Normal matrices use
+    // Inverse(); near-singular or non-finite transforms fall back to
+    // PseudoInverse(), and any remaining non-finite result is replaced by
+    // identity so NaN/Inf never reaches Box3.
+    Matrix3 SafeInverse(const Matrix3& m);
+
     // World -> screen. Caller must set the GraphicsWindow transform to identity.
     // `ok` is false when the point is behind the perspective camera or clipped.
     bool MapWorldToScreen(GraphicsWindow* gw, const Point3& world,

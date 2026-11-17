@@ -1,5 +1,6 @@
 #include "CADDraw.h"
 #include <gfx.h>
+#include <algorithm>
 #include <cmath>
 
 namespace cad
@@ -41,6 +42,35 @@ namespace cad
         c[5] = Point3(hi.x, lo.y, hi.z);
         c[6] = Point3(lo.x, hi.y, hi.z);
         c[7] = Point3(hi.x, hi.y, hi.z);
+    }
+
+    Matrix3 SafeInverse(const Matrix3& m)
+    {
+        const Point3 r0 = m.GetRow(0);
+        const Point3 r1 = m.GetRow(1);
+        const Point3 r2 = m.GetRow(2);
+        const float det = DotProd(r0, CrossProd(r1, r2));
+        const float nmax = std::max(Length(r0), std::max(Length(r1), Length(r2)));
+        const float tol = 1.0e-5f * nmax * nmax * nmax;
+
+        Matrix3 out;
+        if (std::isfinite(det) && nmax > 0.0f && std::fabs(det) > tol)
+            out = Inverse(m);
+        else
+            out = PseudoInverse(m);
+
+        bool finite = true;
+        for (int r = 0; r < 3 && finite; ++r) {
+            for (int c = 0; c < 3; ++c) {
+                if (!std::isfinite(out.GetRow(r)[c])) {
+                    finite = false;
+                    break;
+                }
+            }
+        }
+        if (!finite)
+            out.IdentityMatrix();
+        return out;
     }
 
     bool MapWorldToScreen(GraphicsWindow* gw, const Point3& world,

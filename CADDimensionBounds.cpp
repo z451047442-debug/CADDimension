@@ -162,7 +162,7 @@ void CADDimension::GetLocalBoundBox(TimeValue t, INode* inode, ViewExp* /*vp*/, 
         if (inode && GetDimBounds(t, inode, wb)) {
             Point3 corners[8];
             cad::BoxCorners(wb, corners);
-            Matrix3 inv = Inverse(inode->GetObjectTM(t));
+            Matrix3 inv = cad::SafeInverse(inode->GetObjectTM(t));
             box.Init();
             box.IncludePoints(corners, 8, &inv);
             return;
@@ -182,7 +182,7 @@ void CADDimension::GetLocalBoundBox(TimeValue t, INode* inode, ViewExp* /*vp*/, 
 
     Point3 corners[8];
     cad::BoxCorners(wb, corners);
-    Matrix3 inv = Inverse(inode->GetObjectTM(t));
+    Matrix3 inv = cad::SafeInverse(inode->GetObjectTM(t));
     box.Init();
     box.IncludePoints(corners, 8, &inv);
 }
@@ -211,6 +211,6 @@ void CADDimension::GetDeformBBox(TimeValue t, Box3& box, Matrix3* tm, BOOL /*use
         box.Init();
         return;
     }
-    if (tm) box = wb * Inverse(*tm);
+    if (tm) box = wb * cad::SafeInverse(*tm);
     else    box = wb;
 }

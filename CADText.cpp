@@ -162,7 +162,7 @@ void CADText::GetLocalBoundBox(TimeValue t, INode* inode, ViewExp*, Box3& box)
     }
     Point3 corners[8];
     cad::BoxCorners(wb, corners);
-    Matrix3 inv = Inverse(inode->GetObjectTM(t));
+    Matrix3 inv = cad::SafeInverse(inode->GetObjectTM(t));
     box.Init();
     box.IncludePoints(corners, 8, &inv);
 }
