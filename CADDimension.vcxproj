@@ -67,7 +67,7 @@
       <ProgramDatabaseFile>$(ProjectDir)obj\repro\CADDimension.pdb</ProgramDatabaseFile>
       <PDBALTPATH>$(TargetName).pdb</PDBALTPATH>
       <StripPrivateSymbols>$(ProjectDir)obj\repro\$(TargetName).stripped.pdb</StripPrivateSymbols>
-      <GenerateDebugInformation Condition="'$(Configuration)'=='Release'">false</GenerateDebugInformation>
+      <GenerateDebugInformation Condition="'$(Configuration)'=='Release' and '$(BuildSymbols)' != 'true'">false</GenerateDebugInformation>
       <ControlFlowGuard Condition="'$(Configuration)'=='Release'">Guard</ControlFlowGuard>
       <AdditionalOptions>/OPT:NOICF /Brepro /PDBALTPATH:$(TargetName).pdb %(AdditionalOptions)</AdditionalOptions>
       <LinkIncremental Condition="'$(Configuration)'=='Debug' or '$(Configuration)'=='Hybrid'">false</LinkIncremental>
