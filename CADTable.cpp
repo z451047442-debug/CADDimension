@@ -93,6 +93,9 @@ static ParamBlockDesc2 cadtable_pb(
         p_ui, TYPE_SPINNER, EDITTYPE_FLOAT, IDC_TABLE_TS_EDIT, IDC_TABLE_TS_SPIN, 0.1f,
         p_accessor, &g_tableAccessor,
         p_end,
+    // 400 = initial table size (20x20). Tab<> ParamDef has an extra
+    // table_size slot between type and flags (iparamb2.h:3303-3319);
+    // P_VARIABLE_SIZE is the flag and IDS_CADTABLE_CELLS is the local name.
     p_cells, _T("cells"), TYPE_STRING_TAB, 400, P_VARIABLE_SIZE, IDS_CADTABLE_CELLS,
         p_end,
     p_end
@@ -253,7 +256,7 @@ void CADTable::GetLocalBoundBox(TimeValue t, INode* inode, ViewExp* vp, Box3& bo
     }
     Point3 corners[8];
     cad::BoxCorners(wb, corners);
-    Matrix3 inv = Inverse(inode->GetObjectTM(t));
+    Matrix3 inv = cad::SafeInverse(inode->GetObjectTM(t));
     box.Init();
     box.IncludePoints(corners, 8, &inv);
 }

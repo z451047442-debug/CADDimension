@@ -41,4 +41,5 @@ try (
 ) catch (
     wlog ("[LEADER][FATAL] " + (getCurrentException()))
 )
+wlog ("[LEADER][DONE] leader probe completed")
 close out

@@ -3,6 +3,32 @@
 > 里程碑编号沿用提交信息中的 B1–B4d。日期取自 git 提交日期。
 > 更细的代码差异请查看对应提交：`git show <hash>`。
 
+## [1.0.1] — 生产就绪修复（2026-11-17）
+
+### 修复
+
+- 包围盒路径新增 `cad::SafeInverse`：正常变换保持 `Inverse`，近奇异/非有限
+  变换回退 `PseudoInverse`，最终非有限结果回退单位矩阵；覆盖 6 个调用点。
+- Modify 面板的 `ParamMap2UserDlgProc` 改为在 `BeginEditParams` 中按当前
+  ParamMap 安装；移除 DLL 装载期静态安装器。
+
+### 构建
+
+- 固定 `PlatformToolset=v143`、`VCToolsVersion=14.38.33130`、WinSDK
+  `10.0.19041.0`；新增工具链与 `3dsmax.cpp.props` 校验。
+- 启用 `/Brepro`、`PDBALTPATH`，`PDBSTRIPPED` 输出到中间目录；Release
+  试启 CFG。
+- `p_cells` 参数行不变；仅补充 Tab<> 宏顺序注释（`400` 为初始表大小）。
+
+### 已知限制（延后 1.0.2）
+
+- `GetDeformBBox` 的物体空间语义、`SyncCells` 撤销同步。
+- Table/Leader 首期仍仅 MAXScript 编辑；发布包 README 需提供可复制示例。
+
+### 版本规则
+
+- 运行时/构建改动 → 1.0.1；仅文档/打包且 DLO/MUI 哈希不变 → v1.0.0-r3。
+
 ## 发布前文档准备（1.0.0）
 
 ### 文档

@@ -55,4 +55,5 @@ try (
 ) catch (
     wlog ("[TABLE][FATAL] " + (getCurrentException()))
 )
+wlog ("[TABLE][DONE] table probe completed")
 close out
