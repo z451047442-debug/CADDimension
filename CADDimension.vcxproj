@@ -18,6 +18,8 @@
     <ProjectName>CADDimension</ProjectName>
     <ProjectGuid>{75e6d57f-3cde-4066-a3cf-8b2280699325}</ProjectGuid>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+    <VCToolsVersion>14.38.33130</VCToolsVersion>
     <MaxSDK Condition="'$(MaxSDK)' == ''">$(MAXSDK_DIR)</MaxSDK>
     <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
@@ -31,8 +33,8 @@
   </ImportGroup>
   <PropertyGroup>
     <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
-    <OutDir>$(ProjectDir)x64\$(Configuration)\Plugins\</OutDir>
-    <IntDir>$(ProjectDir)obj\$(Platform)\$(Configuration)\</IntDir>
+    <OutDir Condition="'$(OutDir)' == ''">$(ProjectDir)x64\$(Configuration)\Plugins\</OutDir>
+    <IntDir Condition="'$(IntDir)' == ''">$(ProjectDir)obj\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>CADDimension</TargetName>
     <TargetExt>.dlo</TargetExt>
     <!-- The SDK ships only lib\x64\Release. All configurations link the same
@@ -45,20 +47,29 @@
       <PreprocessorDefinitions>_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(MaxSdkInc);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <WarningLevel>Level4</WarningLevel>
+      <BufferSecurityCheck>true</BufferSecurityCheck>
+      <SDLCheck>true</SDLCheck>
+      <ControlFlowGuard Condition="'$(Configuration)'=='Release'">Guard</ControlFlowGuard>
       <UndefinePreprocessorDefinitions Condition="'$(Configuration)'=='Debug'">_DEBUG;%(UndefinePreprocessorDefinitions)</UndefinePreprocessorDefinitions>
       <UndefinePreprocessorDefinitions Condition="'$(Configuration)'=='Hybrid'">_HYBRID;IS_HYBRID;%(UndefinePreprocessorDefinitions)</UndefinePreprocessorDefinitions>
       <PreprocessorDefinitions Condition="'$(Configuration)'=='Debug'">NDEBUG;SECURE_SCL=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="'$(Configuration)'=='Hybrid'">NDEBUG;SECURE_SCL=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <BasicRuntimeChecks Condition="'$(Configuration)'=='Debug' or '$(Configuration)'=='Hybrid'">Default</BasicRuntimeChecks>
+      <BasicRuntimeChecks Condition="'$(Configuration)'=='Debug'">EnableFastChecks</BasicRuntimeChecks>
+      <BasicRuntimeChecks Condition="'$(Configuration)'=='Hybrid'">Default</BasicRuntimeChecks>
       <RuntimeLibrary Condition="'$(Configuration)'=='Debug' or '$(Configuration)'=='Hybrid'">MultiThreadedDLL</RuntimeLibrary>
-      <AdditionalOptions Condition="'$(Configuration)'=='Debug' or '$(Configuration)'=='Hybrid'">/D_ITERATOR_DEBUG_LEVEL=0 %(AdditionalOptions)</AdditionalOptions>
-      <ProgramDataBaseFileName>$(IntDir)CADDimension.pdb</ProgramDataBaseFileName>
+      <AdditionalOptions>/Brepro %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)'=='Debug' or '$(Configuration)'=='Hybrid'">/D_ITERATOR_DEBUG_LEVEL=0 /Brepro %(AdditionalOptions)</AdditionalOptions>
+      <ProgramDataBaseFileName>$(ProjectDir)obj\repro\CADDimension.pdb</ProgramDataBaseFileName>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>$(MaxSdkLib);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>bmm.lib;core.lib;Geom.lib;gfx.lib;mesh.lib;maxutil.lib;maxscrpt.lib;manipsys.lib;paramblk2.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <ProgramDatabaseFile>$(IntDir)CADDimension.pdb</ProgramDatabaseFile>
-      <AdditionalOptions>/OPT:NOICF %(AdditionalOptions)</AdditionalOptions>
+      <ProgramDatabaseFile>$(ProjectDir)obj\repro\CADDimension.pdb</ProgramDatabaseFile>
+      <PDBALTPATH>$(TargetName).pdb</PDBALTPATH>
+      <StripPrivateSymbols>$(ProjectDir)obj\repro\$(TargetName).stripped.pdb</StripPrivateSymbols>
+      <GenerateDebugInformation Condition="'$(Configuration)'=='Release'">false</GenerateDebugInformation>
+      <ControlFlowGuard Condition="'$(Configuration)'=='Release'">Guard</ControlFlowGuard>
+      <AdditionalOptions>/OPT:NOICF /Brepro /PDBALTPATH:$(TargetName).pdb %(AdditionalOptions)</AdditionalOptions>
       <LinkIncremental Condition="'$(Configuration)'=='Debug' or '$(Configuration)'=='Hybrid'">false</LinkIncremental>
     </Link>
   </ItemDefinitionGroup>
@@ -67,6 +78,13 @@
            Text="MAXSDK_DIR is not set. Set it to the 3ds Max SDK root (e.g. D:\3dsMaxSDK2027\maxsdk) or pass /p:MaxSDK=&lt;sdk-root&gt;." />
     <Error Condition="'$(MaxSDK)' != '' and !Exists('$(MaxSDK)\ProjectSettings\PropertySheets\3dsmax.general.project.settings.props')"
            Text="3ds Max SDK property sheets not found under '$(MaxSDK)'. Check MAXSDK_DIR / MaxSDK." />
+  </Target>
+  <Target Name="ValidateToolchain" BeforeTargets="PrepareForBuild">
+    <Error Condition="'$(PlatformToolset)' != 'v143'" Text="PlatformToolset must be v143 (actual: '$(PlatformToolset)')." />
+    <Error Condition="'$(VCToolsVersion)' != '14.38.33130'" Text="VCToolsVersion must be 14.38.33130 (actual: '$(VCToolsVersion)')." />
+    <Error Condition="'$(WindowsTargetPlatformVersion)' != '10.0.19041.0'" Text="WindowsTargetPlatformVersion must be 10.0.19041.0 (actual: '$(WindowsTargetPlatformVersion)')." />
+    <Error Condition="!Exists('$(MaxSDK)\ProjectSettings\PropertySheets\3dsmax.cpp.props')" Text="3dsmax.cpp.props not found under '$(MaxSDK)'." />
+    <Error Condition="'$(IsMaxProjectInDevTree)' == 'true'" Text="IsMaxProjectInDevTree must not be true." />
   </Target>
   <ItemGroup>
     <ClCompile Include="CADDimension.cpp" />
