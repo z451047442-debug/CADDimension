@@ -29,5 +29,5 @@ try (
 ) catch (
     wlog ("[COMPAT][V1_FATAL] " + (getCurrentException()))
 )
-
+wlog ("[COMPAT][DONE] compat probe completed")
 close out

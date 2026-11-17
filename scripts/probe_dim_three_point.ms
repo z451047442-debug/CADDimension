@@ -102,5 +102,5 @@ try (
 ) catch (
     wlog ("[DIM][LEGACY_FATAL] " + (getCurrentException()))
 )
-
+wlog ("[DIM][DONE] dim probe completed")
 close out

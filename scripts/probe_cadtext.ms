@@ -33,4 +33,5 @@ try (
 ) catch (
     wlog ("[TEXT][FATAL] " + (getCurrentException()))
 )
+wlog ("[TEXT][DONE] text probe completed")
 close out
