@@ -19,6 +19,7 @@ CADDimension 是面向 **3ds Max 2027** 的 C++ 插件 Bundle（`.dlo`），注�
 | [DEVELOPMENT.md](DEVELOPMENT.md) | SDK 2027 API 陷阱、编码规范、扩展配方、评审清单 | 日常开发 |
 | [TESTING.md](TESTING.md) | 批处理探针、覆盖矩阵、手工回归清单 | 提交前验证 |
 | [CHANGELOG.md](CHANGELOG.md) | B1–B4d 里程碑变更记录 | 追溯设计演进 |
+| [RELEASE_README.md](RELEASE_README.md) | 面向最终用户的安装/卸载/升级/回滚与 MAXScript 示例 | 发布/交付 |
 | [ANNOTATION_SUITE.md](ANNOTATION_SUITE.md) | 四插件 Bundle 总体规划、CADDimension 三点标注设计 | 规划四类注释工具前 |
 | [ANNOTATION_SUITE_CLASSES.md](ANNOTATION_SUITE_CLASSES.md) | CADText/CADLeader/CADTable 类声明与 ClassDesc 注册草案 | 实现新类前 |
 
@@ -34,7 +35,10 @@ CADDimension 是面向 **3ds Max 2027** 的 C++ 插件 Bundle（`.dlo`），注�
 
    ```maxscript
    cd = CADDimension()
-   cd.targetNode = $Box001
+   cd.mode = 1
+   cd.point1 = [0, 0, 0]
+   cd.point2 = [100, 0, 0]
+   cd.dimPoint = [50, 50, 0]
    cd.textSize = 14
    cd.dimensionOffset = 36
    ```
@@ -85,6 +89,6 @@ CADDimension/
 
 - 单 DLL 注册 4 类：`CADDimension`、`CADText`、`CADLeader`、`CADTable`。
 - 三配置构建：`Release` / `Debug` / `Hybrid`，输出 `x64/<Config>/Plugins/CADDimension.dlo` 与 `en-US/CADDimension.dlo.mui`。
-- 自动化探针全部通过：Dimension 29、Text 7、Leader 11、Table 20、B1 16（0 FAIL）。
+- 自动化探针全部通过：三配置均为 91 PASS / 0 FAIL / 5 INFO（INFO 按白名单校验）。
 - 人工验收已完成（2026-11-16）；已知限制：`GraphicsWindow` 无 `getColor`，颜色按对象重设。
-- 版本：**1.0.0**（DLL `VERSIONINFO` 1.0.0.0，2026-11-16）。
+- 版本：**1.0.1**（DLL `VERSIONINFO` 1.0.1.0，2026-11-17）；发布说明见 [RELEASE_README.md](RELEASE_README.md)。
