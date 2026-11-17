@@ -221,19 +221,30 @@ Additional MAX plug-ins=<包目录>\
 
 ### 1.0.1 主包与内部验证归档（2026-11-17 已验证）
 
-- 主包：`dist/v1.0.1/CADDimension-1.0.1.zip`，6 条目，SHA256 `6f522662b9c4fea993e095655622aef358b9346ddc357143e316c4e056dfa933`。
-- 主包 `SHA256SUMS.txt` 覆盖 **5/5 载荷**：DLO `92b62a52…`、MUI `5343dabf…`、README `12b3a2ac…`、CHANGELOG `3a4e3eff…`、smoke `afaa9389…`；全新解压后 `sha256sum -c` 全部 OK。
+- 主包：`dist/v1.0.1/CADDimension-1.0.1.zip`，6 条目，SHA256 `8f018b1101d4a8253b6ac0638a94d1fa8cb54bd20cbd9aca8a5f80bff6547621`。
+- 主包 `SHA256SUMS.txt` 覆盖 **5/5 载荷**：DLO `92b62a52…`、MUI `5343dabf…`、README `58287b01…`、CHANGELOG `3a4e3eff…`、smoke `afaa9389…`；全新解压后 `sha256sum -c` 全部 OK。
+- README 已补充 VC++ 2015–2022 x64 运行库要求（`MSVCP140/VCRUNTIME140/VCRUNTIME140_1`）。
 - 内部验证归档：`dist/v1.0.1/CADDimension-1.0.1-verify.zip`，SHA256 `95b3a00281aa6df16a1562e8357df2a962d4363654ce5754472bc41d733a0fb9`；含 `smoke_plugin.ini`（UTF-16LE）、3 套 fixture、`verify_fixtures.ms`。
 - 全新解压路径 `C:\Users\Public\CADDimensionVerify\pkg-1.0.1\`；`smoke_release_result.log` 含 `[SMOKE][PASS] CADDimension,CADText,CADLeader,CADTable`。
 - fixture 验证：`verify_fixtures_result.log` 12 PASS / 0 FAIL / `[FIXTURES][DONE]`（legacy / B4d / 1.0.0）。
 - 主包不含 `smoke_plugin.ini`；冒烟由内部验证归档提供 ini。普通用户安装不需要它。
 
-### 干净机冒烟（分发前，待执行）
+### B4 同机证据与干净机风险接受（2026-11-17）
 
-1. 干净 Windows 11 + 3ds Max 2027.2（29.2.0.20588）；Win10/其他 2027.x 不在 1.0.1 支持范围。仅安装发布包 `.dlo` + `en-US` MUI。
+- 同机（Win11 Pro 10.0.26300 + Max 2027.2 29.2.0.20588）全新解压冒烟：PASS。
+- 回滚演练：1.0.1 → golden 1.0.0 → 恢复 1.0.1，各 12 PASS / 0 FAIL / DONE；耗时 23 秒；证据 `dist/v1.0.1/evidence/`。
+- **干净机 P0：未执行**。用户书面接受以本机构建机同机证据替代（风险 **R-1**）。该接受与"干净机 P0 不可豁免"的原裁决冲突，**Step 8 不得声明 P0=0**。
+- 运行库依赖：目标机缺失 VC++ 2015–2022 x64 运行库时加载会失败；已写入包内 README。
+- M1–M15：未执行；模板见上。
+
+### 干净机冒烟（未执行；用户书面接受同机替代，R-1）
+
+1. 干净 Windows 11 + 3ds Max 2027.2（29.2.0.20588）+ VC++ 2015–2022 x64 运行库；Win10/其他 2027.x 不在 1.0.1 支持范围。仅安装发布包 `.dlo` + `en-US` MUI。
 2. 先运行包内 `smoke_release.ms` 做类加载冒烟；再加载插件，创建四类；打开 B1/B4d/1.0.0 fixture；检查中文面板与 MUI。
 3. 卸载/重装、升级到下一版本、回退到 1.0.0 golden 文件。
 4. 记录 3ds Max 版本、Windows 版本、DLO/MUI SHA、截图/日志。
+
+> 当前状态（2026-11-17）：因用户选择以同机构建机证据替代，本项未执行；风险 R-1 已在 B4 记录，Step 8 不得据此声明 P0=0。
 
 ### 中文 MUI 决策
 
@@ -243,7 +254,7 @@ Additional MAX plug-ins=<包目录>\
 
 ### 发布包
 
-- **1.0.1（当前候选）**：`dist/v1.0.1/CADDimension-1.0.1.zip`，SHA256 `6f522662…`；内部验证归档 `dist/v1.0.1/CADDimension-1.0.1-verify.zip`，SHA256 `95b3a002…`。
+- **1.0.1（当前候选）**：`dist/v1.0.1/CADDimension-1.0.1.zip`，SHA256 `8f018b11…`；内部验证归档 `dist/v1.0.1/CADDimension-1.0.1-verify.zip`，SHA256 `95b3a002…`。
 - 1.0.0（历史，不 GA）：`dist/CADDimension-1.0.0.zip`，SHA256 `a61bd29c…`。
 - 旧包备份：`backups/CADDimension-1.0.0.pre-smoke-20261117.zip`，SHA256 `32f08488…`。
 - `x64/golden/1.0.0/` 成对保存（回滚基线）。

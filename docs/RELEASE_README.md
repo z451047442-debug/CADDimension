@@ -4,6 +4,10 @@
 
 > 支持矩阵：本版本仅在 Windows 11 + 3ds Max 2027.2 上验证。Windows 10 与其他 2027.x 小版本未验证，不在 1.0.1 支持范围内。
 
+## 运行库要求
+
+目标机需安装 **Microsoft Visual C++ 2015–2022 x64 运行库**（`MSVCP140.dll`、`VCRUNTIME140.dll`、`VCRUNTIME140_1.dll`）。若缺失，插件加载会失败；请先安装 VC++ Redistributable x64。Windows 11 不保证默认自带该运行库。
+
 ## 安装
 
 1. 关闭 3ds Max。
